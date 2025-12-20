@@ -29,6 +29,7 @@ const schema = new mongoose.Schema({
   appStaffRoleId: { type: String, default: null },
   appDeclineCooldownDays: { type: Number, default: 7 },
   translatorMinRoleId: { type: String, default: null },
+  botNickname: { type: String, default: null },
 });
 
 // HIER IST DIE WICHTIGE  ÄNDERUNG:

@@ -1,14 +1,15 @@
 import { withAuth } from "next-auth/middleware";
 
-// Wir exportieren die Middleware-Funktion explizit als "default"
 export default withAuth({
   callbacks: {
-    // Diese Funktion prüft: Ist ein Token da? (true/false)
-    authorized: ({ token }) => !!token,
+    authorized: ({ token }) => {
+      // Wir lassen ALLE durch.
+      // Die Prüfung passiert jetzt in der page.js, damit wir unser eigenes Design anzeigen können.
+      return true; 
+    },
   },
 });
 
-// Hier legen wir fest, welche Routen geschützt werden
 export const config = {
   matcher: ["/dashboard/:path*"],
 };
