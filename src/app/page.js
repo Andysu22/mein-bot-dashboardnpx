@@ -10,7 +10,7 @@ export default function Home() {
   if (session) {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen gap-4 p-8">
-        <h1 className="text-3xl font-bold">Hallo, {session.user.name}! 👋 dsfdsfsdf</h1>
+        <h1 className="text-3xl font-bold">Hallo, {session.user.name}! 👋</h1>
         {session.user.image && (
           <img 
             src={session.user.image} 
