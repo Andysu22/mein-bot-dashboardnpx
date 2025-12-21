@@ -16,17 +16,23 @@ export default function DashboardSelectorPage() {
     const fetchGuilds = async () => {
         setRefreshing(true);
         try {
-            // Die API liefert alle Admin-Guilds inkl. hasBot Status
+            // Die API liefert BEREITS gefilterte Admin-Guilds (ohne permissions Feld)
             const res = await fetch("/api/user/guilds?force=true");
+            
+            if (!res.ok) {
+                console.error("API Fehler:", res.status);
+                // Optional: Hier könntest du einen Fehler-State setzen
+                return;
+            }
+
             const data = await res.json();
             
             if (Array.isArray(data)) {
-                // Filterung nach Administrator-Rechten
-                const adminGuilds = data.filter(g => 
-                    (BigInt(g.permissions) & BigInt(0x8)) === BigInt(0x8) || 
-                    (BigInt(g.permissions) & BigInt(0x20)) === BigInt(0x20)
-                );
-                setGuilds(adminGuilds);
+                // WICHTIG: Nicht mehr filtern! Die API hat das schon erledigt.
+                // Einfach die Daten übernehmen.
+                setGuilds(data); 
+            } else {
+                console.error("Daten sind kein Array:", data);
             }
         } catch (error) {
             console.error("Fehler beim Laden der Guilds:", error);
