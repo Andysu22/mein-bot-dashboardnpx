@@ -5,88 +5,35 @@
   --color-foreground: var(--foreground);
   --color-card: var(--card);
   --color-card-foreground: var(--card-foreground);
-  --color-popover: var(--popover);
-  --color-popover-foreground: var(--popover-foreground);
   --color-primary: var(--primary);
   --color-primary-foreground: var(--primary-foreground);
-  --color-secondary: var(--secondary);
-  --color-secondary-foreground: var(--secondary-foreground);
   --color-muted: var(--muted);
   --color-muted-foreground: var(--muted-foreground);
-  --color-accent: var(--accent);
-  --color-accent-foreground: var(--accent-foreground);
-  --color-destructive: var(--destructive);
-  --color-destructive-foreground: var(--destructive-foreground);
   --color-border: var(--border);
-  --color-input: var(--input);
   --color-ring: var(--ring);
-  --radius-sm: calc(var(--radius) - 4px);
-  --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
 }
 
 :root {
-  /* Discord Dark Mode Palette (Modern) */
-  --background: 228 7% 14%;      /* #2b2d31 - Dunkler Hintergrund */
-  --foreground: 210 10% 90%;     /* #dbdee1 - Heller Text (nicht hart weiß) */
-  
-  --card: 225 6% 18%;            /* #313338 - Karten/Container Hintergrund */
-  --card-foreground: 210 10% 90%;
-
-  --popover: 225 6% 18%;
-  --popover-foreground: 210 10% 90%;
-
-  --primary: 235 86% 65%;        /* #5865F2 - Discord Blurple */
-  --primary-foreground: 0 0% 100%;
-
-  --secondary: 223 7% 20%;       /* Etwas helleres Grau für Hover */
-  --secondary-foreground: 210 10% 90%;
-
-  --muted: 223 7% 20%;
-  --muted-foreground: 215 8% 65%; /* Ausgegrauter Text */
-
-  --accent: 223 7% 20%;
-  --accent-foreground: 210 10% 90%;
-
-  --destructive: 359 87% 60%;    /* #ed4245 - Discord Rot */
-  --destructive-foreground: 0 0% 100%;
-
-  --border: 225 6% 13%;          /* Sehr dunkler, subtiler Rand */
-  --input: 223 7% 20%;
-  --ring: 235 86% 65%;
-  
-  --radius: 0.5rem;              /* Leicht abgerundet, nicht zu rund */
-}
-
-/* Wir erzwingen Dark Mode, da es ein Discord-Bot ist */
-.dark {
-  --background: 228 7% 14%;
+  --background: 225 7% 11%;    /* #1a1b1e */
   --foreground: 210 10% 90%;
-  --card: 225 6% 18%;
+  --card: 225 7% 14%;          /* #222327 */
   --card-foreground: 210 10% 90%;
-  --popover: 225 6% 18%;
-  --popover-foreground: 210 10% 90%;
-  --primary: 235 86% 65%;
+  --primary: 235 86% 65%;      /* #5865F2 */
   --primary-foreground: 0 0% 100%;
-  --secondary: 223 7% 20%;
-  --secondary-foreground: 210 10% 90%;
-  --muted: 223 7% 20%;
+  --muted: 225 7% 18%;
   --muted-foreground: 215 8% 65%;
-  --accent: 223 7% 20%;
-  --accent-foreground: 210 10% 90%;
-  --destructive: 359 87% 60%;
-  --destructive-foreground: 0 0% 100%;
-  --border: 225 6% 13%;
-  --input: 223 7% 20%;
+  --border: 225 7% 18%;
   --ring: 235 86% 65%;
+  --radius: 1rem;
 }
 
 @layer base {
-  * {
-    @apply border-border outline-ring/50;
-  }
   body {
-    @apply bg-background text-foreground;
-    font-feature-settings: "rlig" 1, "calt" 1; /* Professionelles Font-Rendering */
+    @apply bg-[#1a1b1e] text-foreground antialiased;
+    /* Keine schweren Animationen im Hintergrund mehr */
+  }
+  * {
+    @apply border-border/40;
   }
 }

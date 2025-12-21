@@ -1,20 +1,18 @@
 "use client";
 
-import { signIn } from "next-auth/react";
 import { Button } from "@/components/ui/button";
-import { LogIn, ShieldAlert, Lock } from "lucide-react";
+import { LogIn, Lock } from "lucide-react";
 import Link from "next/link";
+import { openLoginPopup } from "@/lib/loginPopup"; //
 
 export default function LoginView() {
   return (
     <div className="min-h-screen bg-[#1a1c1f] flex flex-col items-center justify-center p-6 relative overflow-hidden font-sans">
       
-      {/* Hintergrund Glow */}
       <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-indigo-600/10 rounded-full blur-[120px] -z-10" />
 
       <div className="max-w-md w-full text-center space-y-8">
         
-        {/* Icon / Logo */}
         <div className="flex justify-center mb-6">
             <div className="w-20 h-20 bg-[#2b2d31] rounded-3xl flex items-center justify-center shadow-2xl border border-white/5 relative group">
                 <div className="absolute inset-0 bg-indigo-500/20 blur-xl rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
@@ -31,7 +29,8 @@ export default function LoginView() {
 
         <div className="pt-4 space-y-4">
             <Button 
-                onClick={() => signIn("discord", { callbackUrl: "/dashboard" })}
+                // HIER: WICHTIG! Das Event 'e' weitergeben
+                onClick={(e) => openLoginPopup(e)}
                 size="lg"
                 className="w-full bg-[#5865F2] hover:bg-[#4752C4] text-white font-bold h-14 rounded-xl text-lg shadow-lg shadow-indigo-500/20 transition-all hover:scale-[1.02]"
             >

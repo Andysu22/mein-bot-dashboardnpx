@@ -1,14 +1,16 @@
 import { withAuth } from "next-auth/middleware";
+import { NextResponse } from "next/server";
 
-export default withAuth({
-  callbacks: {
-    authorized: ({ token }) => {
-      // Wir lassen ALLE durch.
-      // Die Prüfung passiert jetzt in der page.js, damit wir unser eigenes Design anzeigen können.
-      return true; 
-    },
+export default withAuth(
+  function middleware(req) {
+    return NextResponse.next();
   },
-});
+  {
+    callbacks: {
+      authorized: () => true,
+    },
+  }
+);
 
 export const config = {
   matcher: ["/dashboard/:path*"],

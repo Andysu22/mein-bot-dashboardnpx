@@ -1,7 +1,6 @@
 import NextAuth from "next-auth";
 import DiscordProvider from "next-auth/providers/discord";
 
-// WICHTIG: "export" muss hier stehen, damit wir es im Layout nutzen können!
 export const authOptions = {
   providers: [
     DiscordProvider({
@@ -10,11 +9,13 @@ export const authOptions = {
       authorization: { params: { scope: 'identify guilds' } },
     }),
   ],
+  pages: {
+    signIn: '/auth-success',
+    error: '/auth-success',
+  },
   callbacks: {
     async jwt({ token, account }) {
-      if (account) {
-        token.accessToken = account.access_token;
-      }
+      if (account) token.accessToken = account.access_token;
       return token;
     },
     async session({ session, token }) {
@@ -26,5 +27,4 @@ export const authOptions = {
 };
 
 const handler = NextAuth(authOptions);
-
 export { handler as GET, handler as POST };
