@@ -7,7 +7,8 @@ export default withAuth(
   },
   {
     callbacks: {
-      authorized: () => true,
+      // Prüft, ob ein Token existiert (User ist eingeloggt)
+      authorized: ({ token }) => !!token,
     },
   }
 );
