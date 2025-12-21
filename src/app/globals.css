@@ -15,11 +15,11 @@
 }
 
 :root {
-  --background: 225 7% 11%;    /* #1a1b1e */
+  --background: 225 7% 11%;
   --foreground: 210 10% 90%;
-  --card: 225 7% 14%;          /* #222327 */
+  --card: 225 7% 14%;
   --card-foreground: 210 10% 90%;
-  --primary: 235 86% 65%;      /* #5865F2 */
+  --primary: 235 86% 65%;
   --primary-foreground: 0 0% 100%;
   --muted: 225 7% 18%;
   --muted-foreground: 215 8% 65%;
@@ -29,11 +29,38 @@
 }
 
 @layer base {
+  html, body {
+    /* overflow: hidden entfernt für Pull-to-Refresh am Handy */
+    scroll-behavior: smooth;
+    background-color: #0f1012;
+    color: #e1e1e1;
+    min-height: 100%;
+  }
+
+  /* Verhindert horizontales Wackeln */
   body {
-    @apply bg-[#1a1b1e] text-foreground antialiased;
-    /* Keine schweren Animationen im Hintergrund mehr */
+    overflow-x: hidden;
   }
-  * {
-    @apply border-border/40;
-  }
+}
+
+/* Scroll-Container für Desktop-Inhalt */
+.custom-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.1) transparent;
+}
+
+.custom-scroll::-webkit-scrollbar {
+  width: 10px;
+}
+
+.custom-scroll::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 20px;
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+
+/* ENTFERNT DAS NEXT.JS DEBUG ICON */
+next-route-announcer, #next-live-toast, portal-nextjs-feedback, nextjs-portal, #__next-build-watcher {
+  display: none !important;
 }

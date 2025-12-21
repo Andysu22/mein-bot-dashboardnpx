@@ -24,7 +24,11 @@ export default function Navbar() {
 
   return (
     <nav className="fixed top-0 w-full z-[100] h-16 bg-[#111214]/70 backdrop-blur-xl border-b border-white/[0.03]">
-      <div className="container mx-auto px-6 h-full flex items-center justify-between">
+      {/* ÄNDERUNG HIER: 
+          'container mx-auto' entfernt und 'w-full px-6' hinzugefügt, 
+          damit das Logo ganz nach links rückt.
+      */}
+      <div className="w-full px-6 h-full flex items-center justify-between">
         
         <Link href="/" className="flex items-center gap-3 group">
           <div className="w-9 h-9 bg-gradient-to-br from-[#5865F2] to-[#4752C4] rounded-xl flex items-center justify-center text-white font-bold shadow-lg shadow-indigo-500/20 group-hover:scale-105 transition-transform">
@@ -36,7 +40,6 @@ export default function Navbar() {
         <div>
           {session ? (
             <div className="relative" ref={dropdownRef}>
-              {/* Hintergrund entfernt: Nur Icon, Name und Chevron */}
               <button 
                 onClick={() => setIsOpen(!isOpen)}
                 className="flex items-center gap-3 py-1.5 transition-opacity hover:opacity-80 group"
