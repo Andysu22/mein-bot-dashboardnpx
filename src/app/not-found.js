@@ -1,6 +1,5 @@
 // src/app/not-found.js
 import Link from "next/link";
-import { FileQuestion, Home } from "lucide-react";
 
 export default function NotFound() {
   return (

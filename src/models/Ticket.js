@@ -1,19 +1,20 @@
-// src/models/Ticket.js
+// src/models/Ticket.js (im Dashboard Projekt erstellen!)
 import mongoose from 'mongoose';
 
 const TicketSchema = new mongoose.Schema({
   guildId: { type: String, required: true },
   channelId: { type: String, required: true },
   ownerId: { type: String, required: true },
-  status: { type: String, default: 'open' }, // open, closed
+  status: { type: String, default: 'open' },
   category: { type: String, default: 'support' },
-  language: { type: String, default: 'en' }, // NEU: Speichert die Sprache des Tickets
+  language: { type: String, default: 'en' },
   issue: { type: String, default: '' },
   controlMessageId: { type: String },
   claimedBy: { type: String },
   createdAt: { type: Date, default: Date.now },
   closedAt: { type: Date },
-  deleteAt: { type: Date } // Wann der Channel gelöscht wird
+  deleteAt: { type: Date }
 });
 
-export const Ticket = mongoose.model('Ticket', TicketSchema);
+// Verhindert Fehler beim Hot-Reloading in Next.js
+export const Ticket = mongoose.models.Ticket || mongoose.model('Ticket', TicketSchema);
