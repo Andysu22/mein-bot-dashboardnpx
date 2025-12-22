@@ -5,7 +5,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { 
   LayoutDashboard, MessageSquare, Layers, Users, 
-  ShieldCheck, Menu, ChevronDown, Plus, ArrowLeft
+  ShieldCheck, Menu, ChevronDown, Plus, FileText // <--- FileText Import
 } from "lucide-react";
 
 const CACHE_KEY = "sidebar_guilds_cache";
@@ -40,7 +40,6 @@ export default function Sidebar({ guildId, guildName, guildIcon }) {
   }, []);
 
   const fetchGuilds = async (force = false) => {
-    // 1. Prüfen, ob frische Daten im Session-Cache sind
     if (!force) {
         const cached = sessionStorage.getItem(CACHE_KEY);
         if (cached) {
@@ -56,16 +55,13 @@ export default function Sidebar({ guildId, guildName, guildIcon }) {
 
     setLoadingGuilds(true);
     try {
-      // 2. Cache-Buster: Zeitstempel verhindert, dass der PC alte API-Antworten lädt
       const timestamp = new Date().getTime();
       const res = await fetch(`/api/user/guilds?t=${timestamp}`);
       const data = await res.json();
       
-      // Nur Server mit Bot-Präsenz filtern
       const guildsWithBot = Array.isArray(data) ? data.filter(g => g.hasBot === true) : [];
       setUserGuilds(guildsWithBot);
       
-      // Ganze Liste speichern für Konsistenz
       sessionStorage.setItem(CACHE_KEY, JSON.stringify(data)); 
     } catch (e) {
       setUserGuilds([]);
@@ -77,16 +73,18 @@ export default function Sidebar({ guildId, guildName, guildIcon }) {
   const handleGuildSelect = (targetId) => {
     setShowSelector(false);
     setIsOpen(false);
-    // Cache beim Wechseln kurz bereinigen, damit die Liste frisch bleibt
     sessionStorage.removeItem(CACHE_KEY);
     router.push(`/dashboard/${targetId}`);
   };
 
+  // --- HIER IST DER NEUE LINK ---
   const routes = [
     { icon: <LayoutDashboard className="w-4 h-4"/>, label: "Übersicht", path: `/dashboard/${guildId}` },
     { icon: <MessageSquare className="w-4 h-4"/>, label: "Ticket System", path: `/dashboard/${guildId}/tickets` },
     { icon: <Layers className="w-4 h-4"/>, label: "Voice Hubs", path: `/dashboard/${guildId}/voice` },
     { icon: <Users className="w-4 h-4"/>, label: "Bewerbungen", path: `/dashboard/${guildId}/applications` },
+    // NEU: Modal Builder
+    { icon: <FileText className="w-4 h-4"/>, label: "Modal Builder", path: `/dashboard/${guildId}/modal-builder` },
   ];
 
   return (
@@ -101,6 +99,7 @@ export default function Sidebar({ guildId, guildName, guildIcon }) {
       <aside className={`fixed left-0 bottom-0 w-72 bg-[#111214] border-r border-white/5 transition-transform duration-300 top-0 z-[130] ${isOpen ? "translate-x-0" : "-translate-x-full"} lg:top-16 lg:z-40 lg:translate-x-0`}>
         <div className="flex flex-col h-full p-4">
           
+          {/* Server Selector */}
           <div className="relative mb-6" ref={selectorRef}>
             <div onClick={() => { if(!showSelector) fetchGuilds(); setShowSelector(!showSelector); }} className={`flex items-center justify-between p-3 rounded-xl transition-all border ${showSelector ? "bg-white/5 border-white/10" : "bg-white/[0.03] border-white/5 hover:bg-white/5"} cursor-pointer`}>
               <div className="flex items-center gap-3 overflow-hidden text-left">
@@ -152,6 +151,7 @@ export default function Sidebar({ guildId, guildName, guildIcon }) {
             )}
           </div>
 
+          {/* Navigation */}
           <nav className="space-y-1 flex-1 text-left">
             {routes.map((route) => (
               <SidebarLink key={route.path} icon={route.icon} label={route.label} active={pathname === route.path} href={route.path} onClick={() => setIsOpen(false)} />
