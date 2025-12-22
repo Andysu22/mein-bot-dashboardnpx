@@ -10,7 +10,12 @@ export async function GET(req, { params }) {
     if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
     const botToken = process.env.DISCORD_TOKEN;
-    if (!botToken) return NextResponse.json([], { status: 200 }); // Leere Liste falls kein Bot
+    
+    // Fehler logging, falls Token fehlt
+    if (!botToken) {
+        console.error("[API Error] DISCORD_TOKEN is missing in .env");
+        return NextResponse.json([], { status: 200 }); 
+    }
 
     try {
         const res = await fetch(`https://discord.com/api/v10/guilds/${id}/channels`, {
@@ -18,7 +23,11 @@ export async function GET(req, { params }) {
             cache: 'no-store'
         });
 
-        if (!res.ok) return NextResponse.json([], { status: res.status });
+        if (!res.ok) {
+            console.warn(`[Discord API] Fetch Channels failed for guild ${id}. Status: ${res.status}`);
+            // Wenn 403/404 kommt, geben wir leeres Array, damit Frontend nicht abstürzt
+            return NextResponse.json([], { status: 200 });
+        }
 
         const channels = await res.json();
         
@@ -34,6 +43,7 @@ export async function GET(req, { params }) {
 
         return NextResponse.json(simplified);
     } catch (e) {
+        console.error("[API Error] Fetch Channels Exception:", e);
         return NextResponse.json([], { status: 500 });
     }
 }

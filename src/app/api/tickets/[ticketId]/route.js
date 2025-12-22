@@ -22,11 +22,16 @@ export async function GET(req, { params }) {
             cache: 'no-store'
         });
 
-        if (!res.ok) return NextResponse.json([]); 
+        if (!res.ok) {
+            console.warn(`[Discord API] Fetch Messages failed: ${res.status}`);
+            return NextResponse.json([]); 
+        }
+        
         const messages = await res.json();
         // Umdrehen, damit neueste unten sind (für Chat-View)
         return NextResponse.json(messages.reverse());
     } catch (e) {
+        console.error("[API Error] Get Messages:", e);
         return NextResponse.json([], { status: 500 });
     }
 }
@@ -47,11 +52,17 @@ export async function POST(req, { params }) {
     try {
         // A) NACHRICHT SENDEN
         if (body.action === 'send') {
-            await fetch(`https://discord.com/api/v10/channels/${ticket.channelId}/messages`, {
+            const discordRes = await fetch(`https://discord.com/api/v10/channels/${ticket.channelId}/messages`, {
                 method: 'POST',
                 headers: { Authorization: `Bot ${botToken}`, 'Content-Type': 'application/json' },
                 body: JSON.stringify({ content: `**Support (Dashboard):** ${body.content}` })
             });
+            
+            if (!discordRes.ok) {
+                const errText = await discordRes.text();
+                console.error("[Discord API] Send Message failed:", errText);
+                return NextResponse.json({ error: "Failed to send to Discord" }, { status: 500 });
+            }
             return NextResponse.json({ success: true });
         }
 
@@ -73,7 +84,7 @@ export async function POST(req, { params }) {
         }
 
     } catch (e) {
-        console.error(e);
+        console.error("[API Error] Ticket Action:", e);
         return NextResponse.json({ error: "Action failed" }, { status: 500 });
     }
     

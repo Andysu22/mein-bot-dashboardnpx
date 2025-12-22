@@ -5,17 +5,16 @@ import connectDB from "@/lib/db";
 import { Ticket } from "@/models/Ticket";
 
 export async function GET(req, { params }) {
-    const { id } = await params; // Server ID
+    // Wichtig: params ist in Next.js 15 ein Promise
+    const { id } = await params; 
+    
     const session = await getServerSession(authOptions);
     if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-
-    // Optional: Hier Admin-Check einfügen (wie in settings route)
 
     try {
         await connectDB();
         
-        // Lade alle Tickets für diesen Server, sortiert nach Datum (neueste zuerst)
-        // Wir laden nur 'open' Tickets für die Übersicht, oder alle wenn du willst
+        // Lädt alle Tickets für diesen Server, sortiert nach Datum (neueste zuerst)
         const tickets = await Ticket.find({ guildId: id })
             .sort({ createdAt: -1 })
             .limit(50) // Sicherheitslimit
@@ -23,7 +22,7 @@ export async function GET(req, { params }) {
 
         return NextResponse.json(tickets);
     } catch (e) {
-        console.error(e);
+        console.error("[API Error] Tickets Fetch failed:", e);
         return NextResponse.json({ error: "DB Error" }, { status: 500 });
     }
 }
