@@ -5,8 +5,9 @@ import connectDB from "@/lib/db";
 import { GuildSettings } from "@/models/GuildSettings";
 import { Whitelist } from "@/models/Whitelist";
 import { z } from "zod";
+import { checkRateLimit } from "@/lib/rateLimit"; // <--- IMPORT
 
-// VOLLSTÄNDIGES SCHEMA (Alle Felder aus deinem Original)
+// Vollständiges Schema
 const settingsSchema = z.object({
   ticketsEnabled: z.boolean().optional(),
   logChannelId: z.string().nullable().optional(),
@@ -30,6 +31,8 @@ const settingsSchema = z.object({
   translatorMinRoleId: z.string().nullable().optional(),
   botNickname: z.string().max(32).nullable().optional(),
 });
+
+// --- HILFSFUNKTIONEN ---
 
 async function updateBotNickname(guildId, nickname) {
   const botToken = process.env.DISCORD_TOKEN;
@@ -71,7 +74,12 @@ async function isBotInGuild(guildId) {
   return res.ok;
 }
 
+// --- ROUTEN HANDLER ---
+
 export async function GET(req, { params }) {
+  // Rate Limit Check
+  if (checkRateLimit(req)) return NextResponse.json({ error: "Zu schnell" }, { status: 429 });
+
   const { guildId } = await params;
   const session = await getServerSession(authOptions);
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -85,6 +93,9 @@ export async function GET(req, { params }) {
 }
 
 export async function POST(req, { params }) {
+  // Rate Limit Check (Wichtig beim Speichern!)
+  if (checkRateLimit(req)) return NextResponse.json({ error: "Zu schnell" }, { status: 429 });
+
   const { guildId } = await params;
   const session = await getServerSession(authOptions);
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -92,11 +103,10 @@ export async function POST(req, { params }) {
   const isAdmin = await checkAdmin(session.accessToken, guildId);
   if (!isAdmin) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
-  // NEU: Whitelist Check in der API
   if (process.env.WHITELIST_ENABLED === 'true') {
     await connectDB();
     const isWhitelisted = await Whitelist.exists({ guildId });
-    if (!isWhitelisted) return NextResponse.json({ error: "Server not whitelisted" }, { status: 403 });
+    if (!isWhitelisted) return NextResponse.json({ error: "Not whitelisted" }, { status: 403 });
   }
 
   if (!(await isBotInGuild(guildId))) {

@@ -10,8 +10,8 @@ export const authOptions = {
     }),
   ],
   pages: {
-    signIn: '/auth-success',
-    error: '/auth-success',
+    signIn: '/', // <--- ÄNDERUNG: Leite Unangemeldete zur Startseite (wo der Login-Button ist)
+    error: './not-found', // Optional: Eigene Fehlerseite, falls gewünscht
   },
   callbacks: {
     async jwt({ token, account }) {
