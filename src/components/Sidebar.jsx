@@ -4,8 +4,16 @@ import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { 
-  LayoutDashboard, MessageSquare, Layers, Users, 
-  ShieldCheck, Menu, ChevronDown, Plus, FileText // <--- FileText Import
+  LayoutDashboard, 
+  MessageSquare, 
+  Layers, 
+  Users, 
+  ShieldCheck, 
+  Menu, 
+  ChevronDown, 
+  Plus, 
+  FileText,
+  Terminal // <--- NEU IMPORTIERT
 } from "lucide-react";
 
 const CACHE_KEY = "sidebar_guilds_cache";
@@ -77,14 +85,14 @@ export default function Sidebar({ guildId, guildName, guildIcon }) {
     router.push(`/dashboard/${targetId}`);
   };
 
-  // --- HIER IST DER NEUE LINK ---
   const routes = [
     { icon: <LayoutDashboard className="w-4 h-4"/>, label: "Übersicht", path: `/dashboard/${guildId}` },
     { icon: <MessageSquare className="w-4 h-4"/>, label: "Ticket System", path: `/dashboard/${guildId}/tickets` },
     { icon: <Layers className="w-4 h-4"/>, label: "Voice Hubs", path: `/dashboard/${guildId}/voice` },
     { icon: <Users className="w-4 h-4"/>, label: "Bewerbungen", path: `/dashboard/${guildId}/applications` },
-    // NEU: Modal Builder
     { icon: <FileText className="w-4 h-4"/>, label: "Modal Builder", path: `/dashboard/${guildId}/modal-builder` },
+    // NEU HINZUGEFÜGT:
+    { icon: <Terminal className="w-4 h-4"/>, label: "Custom Commands", path: `/dashboard/${guildId}/commands` },
   ];
 
   return (
