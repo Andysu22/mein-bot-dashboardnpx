@@ -9,25 +9,25 @@ async function pushCommandsToDiscord(guildId) {
   const botToken = process.env.DISCORD_TOKEN;
   const clientId = process.env.NEXT_PUBLIC_DISCORD_CLIENT_ID;
 
-  // 1. Alle Commands aus der DB laden
   const dbCommands = await CustomCommand.find({ guildId });
 
-  // 2. Formatieren für Discord API
-  const discordCommands = dbCommands.map(cmd => ({
+  const discordCommands = dbCommands.map((cmd) => ({
     name: cmd.name,
     description: cmd.description,
     type: 1, // Slash Command
   }));
 
-  // 3. An Discord senden (PUT überschreibt die Liste für diesen Server)
-  const response = await fetch(`https://discord.com/api/v10/applications/${clientId}/guilds/${guildId}/commands`, {
-    method: "PUT",
-    headers: {
-      "Authorization": `Bot ${botToken}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(discordCommands),
-  });
+  const response = await fetch(
+    `https://discord.com/api/v10/applications/${clientId}/guilds/${guildId}/commands`,
+    {
+      method: "PUT",
+      headers: {
+        Authorization: `Bot ${botToken}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(discordCommands),
+    }
+  );
 
   if (!response.ok) {
     const errorText = await response.text();
@@ -36,7 +36,7 @@ async function pushCommandsToDiscord(guildId) {
   }
 }
 
-// GET: Commands laden
+// GET
 export async function GET(req, { params }) {
   const { id: guildId } = await params;
   const session = await getServerSession(authOptions);
@@ -47,7 +47,7 @@ export async function GET(req, { params }) {
   return NextResponse.json(commands);
 }
 
-// POST: Erstellen und an Discord senden
+// POST
 export async function POST(req, { params }) {
   const { id: guildId } = await params;
   const session = await getServerSession(authOptions);
@@ -55,25 +55,43 @@ export async function POST(req, { params }) {
 
   try {
     const body = await req.json();
-    const { name, description, response, ephemeral } = body;
-    const cleanName = name.toLowerCase().replace(/\s+/g, "-");
+
+    const {
+      name,
+      description,
+      response,
+      ephemeral,
+      type = "text",
+      builderData = null,
+    } = body;
+
+    const cleanName = String(name || "")
+      .toLowerCase()
+      .replace(/\s+/g, "-");
+
+    if (!cleanName) {
+      return NextResponse.json({ error: "Name fehlt" }, { status: 400 });
+    }
+
+    if (!response) {
+      return NextResponse.json({ error: "Response fehlt" }, { status: 400 });
+    }
 
     await dbConnect();
 
-    // Limit prüfen
     const count = await CustomCommand.countDocuments({ guildId });
     if (count >= 50) return NextResponse.json({ error: "Limit erreicht" }, { status: 403 });
 
-    // In DB speichern
     const newCmd = await CustomCommand.create({
       guildId,
       name: cleanName,
       description: description || "Custom Command",
+      type,
       response,
-      ephemeral
+      ephemeral: !!ephemeral,
+      builderData: builderData ?? null,
     });
 
-    // WICHTIG: Sofort an Discord senden!
     await pushCommandsToDiscord(guildId);
 
     return NextResponse.json(newCmd);
@@ -83,7 +101,7 @@ export async function POST(req, { params }) {
   }
 }
 
-// DELETE: Löschen und Liste bei Discord aktualisieren
+// DELETE
 export async function DELETE(req, { params }) {
   const { id: guildId } = await params;
   const session = await getServerSession(authOptions);
@@ -95,7 +113,6 @@ export async function DELETE(req, { params }) {
   await dbConnect();
   await CustomCommand.findOneAndDelete({ _id: commandId, guildId });
 
-  // Liste aktualisieren (der gelöschte Command verschwindet dann auch bei Discord)
   try {
     await pushCommandsToDiscord(guildId);
   } catch (e) {

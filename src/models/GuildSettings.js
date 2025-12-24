@@ -1,5 +1,5 @@
-// src/models/GuildSettings.js (Dashboard Version)
-import mongoose from 'mongoose';
+// src/models/GuildSettings.js (Dashboard)
+import mongoose from "mongoose";
 
 const schema = new mongoose.Schema({
   guildId: { type: String, required: true, unique: true },
@@ -8,12 +8,29 @@ const schema = new mongoose.Schema({
   logChannelId: { type: String, default: null },
   supportRoleId: { type: String, default: null },
   ticketCategoryId: { type: String, default: null },
-  ticketLanguage: { type: String, default: 'en' },
+  ticketLanguage: { type: String, default: "en" },
   panelChannelId: { type: String, default: null },
   panelMessageId: { type: String, default: null },
   deeplApiKey: { type: String, default: null },
   adminRoles: [String],
   ticketsEnabled: { type: Boolean, default: true },
+
+  // Ticket Form (optional override via Modal Builder)
+  ticketForm: {
+    mode: { type: String, enum: ["default", "custom"], default: "default" },
+    version: { type: Number, default: 1 },
+    botCode: { type: String, default: null },
+    builderData: { type: Object, default: null },
+    submitTemplate: { type: String, default: null },
+
+    // Embed that will be sent inside the created ticket channel
+    ticketEmbed: {
+      title: { type: String, default: "" },
+      description: { type: String, default: "" },
+      color: { type: String, default: "#5865F2" },
+      includeFields: { type: Boolean, default: true },
+    },
+  },
 
   // TempVC
   tempVcEnabled: { type: Boolean, default: false },
@@ -32,6 +49,4 @@ const schema = new mongoose.Schema({
   botNickname: { type: String, default: null },
 });
 
-// HIER IST DIE WICHTIGE  ÄNDERUNG:
-// Wir prüfen erst, ob das Model schon existiert.
-export const GuildSettings = mongoose.models.GuildSettings || mongoose.model('GuildSettings', schema);
+export const GuildSettings = mongoose.models.GuildSettings || mongoose.model("GuildSettings", schema);

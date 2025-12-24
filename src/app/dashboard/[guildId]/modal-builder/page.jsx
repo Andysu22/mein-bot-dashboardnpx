@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { use, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { create } from "zustand";
 import { nanoid } from "nanoid";
@@ -10,10 +10,37 @@ import { SortableContext, verticalListSortingStrategy, useSortable } from "@dnd-
 import { CSS } from "@dnd-kit/utilities";
 
 import EmojiPicker from "emoji-picker-react";
+import { useRouter, useSearchParams } from "next/navigation";
 
 /** ========= Helpers ========= */
 const MAX_COMPONENTS = 5;
 const MAX_SELECT_OPTIONS = 25;
+const MAX_TEMPLATES = 10;
+
+function templatesStorageKey(guildId) {
+  return `modal_builder_templates:${guildId || "global"}`;
+}
+
+function safeJsonParse(str, fallback) {
+  try {
+    const v = JSON.parse(str);
+    return v ?? fallback;
+  } catch {
+    return fallback;
+  }
+}
+
+function readTemplates(guildId) {
+  if (typeof window === "undefined") return [];
+  const raw = window.localStorage.getItem(templatesStorageKey(guildId));
+  const arr = safeJsonParse(raw, []);
+  return Array.isArray(arr) ? arr : [];
+}
+
+function writeTemplates(guildId, templates) {
+  if (typeof window === "undefined") return;
+  window.localStorage.setItem(templatesStorageKey(guildId), JSON.stringify(templates));
+}
 
 function cn(...xs) {
   return xs.filter(Boolean).join(" ");
@@ -433,6 +460,19 @@ const useBuilderStore = create((set, get) => ({
   setTitle: (title) => set((s) => ({ modal: { ...s.modal, title } })),
   setCustomId: (custom_id) => set((s) => ({ modal: { ...s.modal, custom_id } })),
   setShowWarning: (show_warning) => set((s) => ({ modal: { ...s.modal, show_warning } })),
+
+  setModal: (modal) => set(() => ({ modal })),
+
+  resetModal: () =>
+    set(() => ({
+      modal: {
+        title: "Modal",
+        custom_id: "modal",
+        show_warning: false,
+        components: [defaultComponent(KINDS.TEXT_INPUT)],
+      },
+    })),
+
 
   addComponent: (kind) => {
     const { modal } = get();
@@ -1643,7 +1683,7 @@ function DiscordPreview({ guildId }) {
 export default function ModalBuilderPage({ params }) {
   const guildId = params?.guildId;
 
-  const { modal, setTitle, setCustomId, setShowWarning, addComponent } = useBuilderStore();
+  const { modal, setTitle, setCustomId, setShowWarning, addComponent, setModal, resetModal } = useBuilderStore();
 
   const json = useMemo(() => buildDiscordModalJSON(modal), [modal]);
   const jsCode = useMemo(() => buildDiscordJsCode(modal), [modal]);
@@ -1652,15 +1692,114 @@ export default function ModalBuilderPage({ params }) {
   const [codeMode, setCodeMode] = useState("bot");
   const [copied, setCopied] = useState(false);
 
+  // Templates (local)
+const [templates, setTemplates] = useState([]);
+const [templateName, setTemplateName] = useState("");
+const [selectedTemplateId, setSelectedTemplateId] = useState("");
+const [tplMsg, setTplMsg] = useState("");
+
+useEffect(() => {
+  const t = readTemplates(guildId);
+  setTemplates(t);
+  setSelectedTemplateId("");
+}, [guildId]);
+
+function flashTplMsg(msg) {
+  setTplMsg(msg);
+  setTimeout(() => setTplMsg(""), 1200);
+}
+
+function sanitizeTemplateModal(m) {
+  // neue IDs, damit React-Keys/DnD stabil bleiben
+  return {
+    ...m,
+    components: Array.isArray(m?.components)
+      ? m.components.map((c) => ({
+          ...c,
+          id: nanoid(),
+          options: Array.isArray(c.options)
+            ? c.options.map((o) => ({ ...o, id: nanoid() }))
+            : c.options,
+        }))
+      : [],
+  };
+}
+
+function onSaveTemplate() {
+  const name = String(templateName || "").trim();
+  if (!name) return flashTplMsg("Name fehlt");
+  if (templates.length >= MAX_TEMPLATES) return flashTplMsg(`Max ${MAX_TEMPLATES}`);
+
+  const next = {
+    id: nanoid(),
+    name: name.slice(0, 40),
+    createdAt: Date.now(),
+    modal,
+  };
+
+  const updated = [next, ...templates].slice(0, MAX_TEMPLATES);
+  setTemplates(updated);
+  writeTemplates(guildId, updated);
+  setTemplateName("");
+  flashTplMsg("Gespeichert");
+  }
+  
+  function onLoadTemplate(id) {
+    const t = templates.find((x) => x.id === id);
+    if (!t?.modal) return;
+    setSelectedTemplateId(id);
+    setModal(sanitizeTemplateModal(t.modal));
+    flashTplMsg("Geladen");
+  }
+  
+  function onDeleteTemplate(id) {
+    const updated = templates.filter((x) => x.id !== id);
+    setTemplates(updated);
+    writeTemplates(guildId, updated);
+    if (selectedTemplateId === id) setSelectedTemplateId("");
+    flashTplMsg("Gelöscht");
+  }
+
   const codeText = codeMode === "json" ? JSON.stringify(json, null, 2) : codeMode === "discordjs" ? jsCode : botCode;
 
   const canAdd = modal.components.length < MAX_COMPONENTS;
 
   async function copy() {
+  try {
+    // modern API (kann fehlschlagen je nach Browser / Kontext)
     await navigator.clipboard.writeText(codeText);
     setCopied(true);
-    setTimeout(() => setCopied(false), 900); // < 1s
+    setTimeout(() => setCopied(false), 900);
+    return;
+  } catch (err) {
+    // fallback: hidden textarea + execCommand
+    try {
+      const ta = document.createElement("textarea");
+      ta.value = codeText;
+      ta.setAttribute("readonly", "");
+      ta.style.position = "fixed";
+      ta.style.top = "-1000px";
+      ta.style.left = "-1000px";
+      ta.style.opacity = "0";
+      document.body.appendChild(ta);
+      ta.select();
+      const ok = document.execCommand("copy");
+      document.body.removeChild(ta);
+
+      if (ok) {
+        setCopied(true);
+        setTimeout(() => setCopied(false), 900);
+        return;
+      }
+    } catch {}
+
+    // wenn beides fehlschlägt: wenigstens Feedback
+    console.error("Copy failed:", err);
+    alert("Kopieren fehlgeschlagen. Bitte manuell markieren und kopieren.");
   }
+}
+
+
 
   return (
     <div className="w-full text-zinc-100">
@@ -1693,6 +1832,80 @@ export default function ModalBuilderPage({ params }) {
                 </label>
 
                 <Toggle label="Show warning (debug)" value={!!modal.show_warning} onChange={(v) => setShowWarning(v)} />
+                {/* Templates */}
+<div className="rounded-md bg-[#141518] ring-1 ring-white/10 p-3 space-y-3">
+  <div className="flex items-center justify-between">
+    <div className="text-xs text-[#B5BAC1]">
+      Templates ({templates.length}/{MAX_TEMPLATES})
+    </div>
+    <div className="flex items-center gap-2">
+      {tplMsg ? <div className="text-[11px] text-[#B5BAC1]">{tplMsg}</div> : null}
+      <button
+        type="button"
+        onClick={() => {
+          resetModal();
+          flashTplMsg("Reset");
+        }}
+        className="rounded-md bg-white/5 px-2 py-1 text-xs font-semibold hover:bg-white/10 cursor-pointer"
+        title="Werkseinstellungen"
+      >
+        Reset
+      </button>
+    </div>
+  </div>
+
+  <div className="flex gap-2">
+    <input
+      className="flex-1 rounded-md bg-[#1e1f22] px-3 py-2 text-sm text-[#DBDEE1] ring-1 ring-white/10 outline-none focus:ring-2 focus:ring-[#5865F2]"
+      placeholder="Template Name"
+      value={templateName}
+      onChange={(e) => setTemplateName(e.target.value)}
+      maxLength={40}
+    />
+    <button
+      type="button"
+      onClick={onSaveTemplate}
+      disabled={!templateName.trim() || templates.length >= MAX_TEMPLATES}
+      className={cn(
+        "rounded-md bg-[#5865F2] px-3 py-2 text-xs font-semibold text-white cursor-pointer hover:bg-[#4f5ae6]",
+        (!templateName.trim() || templates.length >= MAX_TEMPLATES) ? "opacity-50 cursor-not-allowed hover:bg-[#5865F2]" : ""
+      )}
+    >
+      Save
+    </button>
+  </div>
+
+  <div className="flex gap-2">
+    <select
+      className="flex-1 rounded-md bg-[#1e1f22] px-3 py-2 text-sm text-[#DBDEE1] ring-1 ring-white/10 outline-none focus:ring-2 focus:ring-[#5865F2]"
+      value={selectedTemplateId}
+      onChange={(e) => onLoadTemplate(e.target.value)}
+    >
+      <option value="">Load template…</option>
+      {templates.map((t) => (
+        <option key={t.id} value={t.id}>
+          {t.name}
+        </option>
+      ))}
+    </select>
+
+    <button
+      type="button"
+      onClick={() => selectedTemplateId && onDeleteTemplate(selectedTemplateId)}
+      disabled={!selectedTemplateId}
+      className={cn(
+        "rounded-md bg-white/5 px-3 py-2 text-xs font-semibold hover:bg-white/10 cursor-pointer",
+        !selectedTemplateId ? "opacity-50 cursor-not-allowed hover:bg-white/5" : ""
+      )}
+    >
+      Delete
+    </button>
+  </div>
+
+  <div className="text-[11px] text-[#B5BAC1]">
+    Lokal im Browser gespeichert (pro Server).
+  </div>
+</div>
 
                 <div className="flex items-center justify-between">
                   <div className="text-xs text-[#B5BAC1]">
