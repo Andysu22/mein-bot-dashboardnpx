@@ -3,7 +3,7 @@
 import React, { useEffect, useState, useMemo } from "react";
 import { nanoid } from "nanoid";
 import { useRouter, useParams, useSearchParams } from "next/navigation";
-import { Save, FileCode } from "lucide-react"; 
+import { Save, RotateCcw } from "lucide-react"; 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
@@ -11,7 +11,7 @@ import { Input } from "@/components/ui/input";
 import EmbedBuilder from "@/components/builders/embed/EmbedBuilder";
 import EmbedPreview from "@/components/builders/embed/EmbedPreview";
 
-// Helpers (Templates, Storage, Colors)
+// Helpers
 const MAX_TEMPLATES = 10;
 function templatesStorageKey(guildId) { return `embed_builder_templates:${guildId || "global"}`; }
 function safeJsonParse(str, fallback) { try { const v = JSON.parse(str); return v ?? fallback; } catch { return fallback; } }
@@ -22,17 +22,7 @@ function truncate(s, max) { const t = String(s ?? ""); return t.length <= max ? 
 function toHexColor(s) { const t = String(s ?? "").trim(); if (!t) return "#5865F2"; const v = t.startsWith("#") ? t : `#${t}`; if (!/^#[0-9a-fA-F]{6}$/.test(v)) return "#5865F2"; return v.toUpperCase(); }
 
 function defaultEmbed() {
-  return {
-    title: "Embed Title",
-    description: "Embed Description",
-    color: "#5865F2",
-    author: { name: "", icon_url: "", url: "" },
-    footer: { text: "", icon_url: "" },
-    thumbnail_url: "",
-    image_url: "",
-    timestamp: false,
-    fields: [],
-  };
+  return { title: "Title", description: "Desc", color: "#5865F2", author: { name: "", icon_url: "" }, footer: { text: "", icon_url: "" }, thumbnail_url: "", image_url: "", timestamp: false, fields: [] };
 }
 
 export default function EmbedBuilderPage() {
@@ -50,7 +40,6 @@ export default function EmbedBuilderPage() {
   const [tplMsg, setTplMsg] = useState("");
   const [guildIcon, setGuildIcon] = useState(null);
 
-  // Laden von Templates und Server Icon
   useEffect(() => {
     if (guildId) {
       setTemplates(readTemplates(guildId));
@@ -64,17 +53,17 @@ export default function EmbedBuilderPage() {
   }, [guildId]);
 
   function flashTplMsg(msg) { setTplMsg(msg); setTimeout(() => setTplMsg(""), 1200); }
-  function resetEmbed() { setEmbed(defaultEmbed()); setContent(""); }
+
+  // --- NEU: RESET MIT BESTÄTIGUNG ---
+  function resetEmbed() { 
+      if (window.confirm("Möchtest du das Embed wirklich zurücksetzen? Alle nicht gespeicherten Änderungen gehen verloren.")) {
+          setEmbed(defaultEmbed()); 
+          setContent("");
+      }
+  }
 
   const botCode = useMemo(() => {
-    const e = {
-      v: 1, content: content || "", 
-      t: truncate(embed.title, 256), d: truncate(embed.description, 4096), c: toHexColor(embed.color),
-      a: { n: truncate(embed.author?.name, 256), i: truncate(embed.author?.icon_url, 2048), u: truncate(embed.author?.url, 2048) },
-      f: { t: truncate(embed.footer?.text, 2048), i: truncate(embed.footer?.icon_url, 2048) },
-      th: truncate(embed.thumbnail_url, 2048), im: truncate(embed.image_url, 2048), ts: !!embed.timestamp,
-      fs: (embed.fields || []).map(x => ({ n: truncate(x.name, 256), v: truncate(x.value, 1024), i: !!x.inline })),
-    };
+    const e = { v: 1, content: content || "", t: truncate(embed.title, 256), d: truncate(embed.description, 4096), c: toHexColor(embed.color), a: { n: truncate(embed.author?.name, 256), i: truncate(embed.author?.icon_url, 2048), u: truncate(embed.author?.url, 2048) }, f: { t: truncate(embed.footer?.text, 2048), i: truncate(embed.footer?.icon_url, 2048) }, th: truncate(embed.thumbnail_url, 2048), im: truncate(embed.image_url, 2048), ts: !!embed.timestamp, fs: (embed.fields || []).map(x => ({ n: truncate(x.name, 256), v: truncate(x.value, 1024), i: !!x.inline })) };
     return JSON.stringify(e);
   }, [embed, content]);
 
@@ -98,9 +87,9 @@ export default function EmbedBuilderPage() {
       <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 border-b border-white/5 pb-6">
         <div><h1 className="text-3xl font-black text-white uppercase">Embed Builder</h1><p className="text-gray-400 text-sm mt-1">Design & Save Embeds.</p></div>
         <div className="flex gap-2 p-1 bg-white/5 rounded-xl border border-white/5">
-          <button onClick={() => setTab("builder")} className={cn("px-4 py-2 rounded-lg text-sm font-bold transition-all", tab === "builder" ? "bg-[#5865F2] text-white" : "text-gray-400")}>Builder</button>
-          <button onClick={() => setTab("templates")} className={cn("px-4 py-2 rounded-lg text-sm font-bold transition-all", tab === "templates" ? "bg-[#5865F2] text-white" : "text-gray-400")}>Templates</button>
-          <button onClick={() => setTab("code")} className={cn("px-4 py-2 rounded-lg text-sm font-bold transition-all", tab === "code" ? "bg-[#5865F2] text-white" : "text-gray-400")}>Code</button>
+          <button onClick={() => setTab("builder")} className={cn("px-4 py-2 rounded-lg font-bold text-sm", tab === "builder" ? "bg-[#5865F2] text-white" : "text-gray-400")}>Builder</button>
+          <button onClick={() => setTab("templates")} className={cn("px-4 py-2 rounded-lg font-bold text-sm", tab === "templates" ? "bg-[#5865F2]" : "text-gray-400")}>Templates</button>
+          <button onClick={() => setTab("code")} className={cn("px-4 py-2 rounded-lg font-bold text-sm", tab === "code" ? "bg-[#5865F2]" : "text-gray-400")}>Code</button>
         </div>
       </div>
 
@@ -108,7 +97,13 @@ export default function EmbedBuilderPage() {
         <div className="bg-[#1a1b1e] border border-white/5 rounded-2xl p-6 space-y-5">
           {tab === "builder" && (
             <>
-              <div className="flex justify-between"><div className="text-white font-bold">Settings</div><button onClick={resetEmbed} className="px-3 py-2 bg-white/5 rounded text-sm font-bold text-gray-200">Reset</button></div>
+              <div className="flex justify-between items-center">
+                  <div className="font-bold text-white">Settings</div>
+                  {/* Neuer Reset Button mit Icon */}
+                  <button onClick={resetEmbed} className="px-3 py-2 bg-white/5 hover:bg-white/10 rounded text-sm font-bold text-gray-200 flex items-center gap-2 transition-colors">
+                      <RotateCcw className="w-3 h-3" /> Reset
+                  </button>
+              </div>
               <div className="rounded-xl border border-white/10 p-3 space-y-2 bg-[#0f1012]">
                  <div className="text-xs text-gray-300 font-bold uppercase">Message Content</div>
                  <textarea value={content} onChange={e => setContent(e.target.value)} placeholder="Text above embed..." className="w-full min-h-[60px] bg-transparent border-none text-sm text-white outline-none resize-none" />
@@ -119,38 +114,30 @@ export default function EmbedBuilderPage() {
 
           {tab === "templates" && (
             <div className="space-y-4">
-              <div className="rounded-xl border border-white/10 bg-black/20 p-4 space-y-3">
-                <div className="flex gap-2"><Input value={templateName} onChange={e => setTemplateName(e.target.value)} className="bg-black/20 border-white/10 text-white" placeholder="Name" /><Button onClick={onSaveTemplate} className="bg-[#5865F2]">Save</Button></div>
-              </div>
-              <div className="rounded-xl border border-white/10 bg-black/20 p-4 space-y-3">
-                <select value={selectedTemplateId} onChange={e => setSelectedTemplateId(e.target.value)} className="w-full bg-black/20 border border-white/10 rounded px-3 py-2 text-white"><option value="">Select...</option>{templates.map(t => <option key={t.id} value={t.id} className="bg-black">{t.name}</option>)}</select>
-                <div className="flex gap-2"><Button onClick={() => onLoadTemplate(selectedTemplateId)} disabled={!selectedTemplateId} className="bg-white/10">Load</Button><Button onClick={() => onDeleteTemplate(selectedTemplateId)} disabled={!selectedTemplateId} className="bg-red-500/20 text-red-200">Delete</Button></div>
-                {tplMsg && <div className="text-sm text-gray-200">{tplMsg}</div>}
-              </div>
+               <div className="flex gap-2"><Input value={templateName} onChange={e => setTemplateName(e.target.value)} placeholder="Template Name" className="bg-black/20 border-white/10 text-white" /><Button onClick={onSaveTemplate} className="bg-[#5865F2]">Save</Button></div>
+               <div className="space-y-2">
+                   <select value={selectedTemplateId} onChange={e => setSelectedTemplateId(e.target.value)} className="w-full bg-black/20 border border-white/10 rounded p-2 text-white"><option value="">Select...</option>{templates.map(t => <option key={t.id} value={t.id} className="bg-black">{t.name}</option>)}</select>
+                   <div className="flex gap-2"><Button onClick={() => onLoadTemplate(selectedTemplateId)} disabled={!selectedTemplateId} className="bg-white/10">Load</Button><Button onClick={() => onDeleteTemplate(selectedTemplateId)} disabled={!selectedTemplateId} className="bg-red-500/20 text-red-200">Delete</Button></div>
+               </div>
+               {tplMsg && <div className="text-sm text-gray-200">{tplMsg}</div>}
             </div>
           )}
-
           {tab === "code" && (
-            <div className="space-y-4">
-              <div className="flex gap-2"><Button onClick={copyBotCode} className="bg-[#5865F2]">Copy</Button><Button onClick={copyAndReturn} className="bg-white/10">Copy & Return</Button></div>
-              {tplMsg && <div className="text-sm text-gray-200">{tplMsg}</div>}
-              <textarea value={botCode} readOnly className="w-full min-h-[260px] bg-black/20 border border-white/10 rounded-xl p-3 text-xs font-mono text-white outline-none" />
-            </div>
+             <div className="space-y-4">
+                 <div className="flex gap-2"><Button onClick={() => navigator.clipboard.writeText(botCode)} className="bg-[#5865F2]">Copy</Button></div>
+                 <textarea value={botCode} readOnly className="w-full h-64 bg-black/20 border border-white/10 rounded p-3 font-mono text-xs text-white outline-none" />
+             </div>
           )}
         </div>
 
         <div className="bg-[#1a1b1e] border border-white/5 rounded-2xl p-6 space-y-4 sticky top-6 self-start">
           <div className="flex justify-between"><div className="text-white font-bold">Preview</div></div>
-          
-          {/* HIER NUTZEN WIR DIE NEUE PREVIEW */}
-          <div className="bg-[#313338] border border-white/10 rounded-2xl p-4">
-              <EmbedPreview 
-                embed={embed} 
-                content={content} 
-                botName="Ticket Bot" // Oder ein anderer Name
-                botIconUrl={botAvatarUrl} 
-              />
-          </div>
+          <EmbedPreview 
+            embed={embed} 
+            content={content} 
+            botName="Ticket Bot" 
+            botIconUrl={botAvatarUrl} 
+          />
         </div>
       </div>
     </div>
