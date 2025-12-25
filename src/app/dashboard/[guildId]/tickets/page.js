@@ -7,17 +7,20 @@ import {
   RefreshCw,
   Save,
   Send,
-  X,
-  Trash2,
-  ChevronDown,
-  ChevronUp,
-  Plus,
 } from "lucide-react";
 import { useParams } from "next/navigation";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+
+// --- NEUE IMPORTS FÜR DIE BUILDER ---
+// Stelle sicher, dass die Pfade exakt stimmen (Groß-/Kleinschreibung!)
+import ModalBuilder from "@/components/builders/modal/ModalBuilder";
+import ModalPreview from "@/components/builders/modal/ModalPreview";
+import EmbedBuilder from "@/components/builders/embed/EmbedBuilder";
+import EmbedPreview from "@/components/builders/embed/EmbedPreview";
+import DiscordMarkdown from "@/components/builders/shared/DiscordMarkdown";
 
 /** ---------- Small helpers ---------- */
 function cn(...xs) {
@@ -28,20 +31,13 @@ function safeStr(v) {
   return String(v ?? "");
 }
 
-function toHexColor(s) {
-  const t = String(s ?? "").trim();
-  if (!t) return "#5865F2";
-  const v = t.startsWith("#") ? t : `#${t}`;
-  if (!/^#[0-9a-fA-F]{6}$/.test(v)) return "#5865F2";
-  return v.toUpperCase();
-}
-
 function truncate(s, max) {
   const t = String(s ?? "");
   if (t.length <= max) return t;
   return t.slice(0, max - 1) + "…";
 }
 
+// Bot Code Generator (angepasst für den Export)
 function buildTicketBotCode(modal) {
   const payload = {
     v: 1,
@@ -50,7 +46,7 @@ function buildTicketBotCode(modal) {
     c: (modal?.components || []).slice(0, 5).map((c) => {
       const base = {
         k: c.kind,
-        cid: truncate(c.customId || "", 100),
+        cid: truncate(c.customId || c.custom_id || "", 100), // Support für beide Schreibweisen
         l: truncate(c.label || "Field", 45),
         d: truncate(c.description || "", 100),
         r: !!c.required,
@@ -59,7 +55,7 @@ function buildTicketBotCode(modal) {
       if (c.kind === "text_input") {
         return {
           ...base,
-          s: c.style === "paragraph" ? 2 : 1,
+          s: (c.style === "paragraph" || c.style === 2) ? 2 : 1,
           ph: truncate(c.placeholder || "", 100) || undefined,
           mx: Number.isFinite(Number(c.maxLength))
             ? Math.max(1, Math.min(4000, Number(c.maxLength)))
@@ -90,63 +86,6 @@ function buildTicketBotCode(modal) {
   };
 
   return JSON.stringify(payload);
-}
-
-/** ---------- Discord-ish markdown preview (minimal) ---------- */
-function escapeHtml(raw) {
-  return String(raw ?? "")
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;")
-    .replaceAll("'", "&#39;");
-}
-
-function renderInlineMarkdownToHtml(escaped) {
-  let s = escaped;
-  s = s.replace(/`([^`]+?)`/g, (_m, inner) => `<code class="inlinecode">${inner}</code>`);
-  s = s.replace(/\*\*([\s\S]+?)\*\*/g, (_m, inner) => `<strong>${inner}</strong>`);
-  s = s.replace(/__([\s\S]+?)__/g, (_m, inner) => `<u>${inner}</u>`);
-  s = s.replace(/~~([\s\S]+?)~~/g, (_m, inner) => `<s>${inner}</s>`);
-  s = s.replace(/(^|[^*])\*([^*\n]+?)\*(?!\*)/g, (_m, pre, inner) => `${pre}<em>${inner}</em>`);
-  return s;
-}
-
-function discordMarkdownToSafeHtml(rawText) {
-  const raw = String(rawText ?? "");
-  const parts = raw.split(/```/g);
-  const out = [];
-
-  for (let i = 0; i < parts.length; i++) {
-    const chunk = parts[i] ?? "";
-
-    if (i % 2 === 1) {
-      const esc = escapeHtml(chunk);
-      out.push(`<pre class="codeblock"><code>${esc}</code></pre>`);
-      continue;
-    }
-
-    const lines = chunk.split(/\r?\n/);
-    const renderedLines = lines.map((line) => {
-      const isQuote = line.startsWith("> ");
-      const content = isQuote ? line.slice(2) : line;
-
-      const esc = escapeHtml(content);
-      const inline = renderInlineMarkdownToHtml(esc);
-
-      if (isQuote) return `<div class="quote">${inline}</div>`;
-      return inline;
-    });
-
-    out.push(renderedLines.join("<br/>"));
-  }
-
-  return out.join("");
-}
-
-function DiscordMarkdown({ text }) {
-  const html = useMemo(() => discordMarkdownToSafeHtml(text), [text]);
-  return <div className="discord-md" dangerouslySetInnerHTML={{ __html: html }} />;
 }
 
 /** ---------- Select helpers ---------- */
@@ -197,10 +136,11 @@ const RoleSelect = ({ label, value, onChange, roles, placeholder }) => {
   );
 };
 
-/** ---------- Defaults for Ticket Form ---------- */
+/** ---------- Defaults ---------- */
 function defaultTicketModal() {
   return {
     title: "Create Ticket",
+    custom_id: "ticket_form",
     components: [
       {
         id: "c1",
@@ -243,7 +183,7 @@ function defaultTicketResponse() {
         "Hello {user}!\n\nThanks for your ticket. A supporter will reply soon.\n\n**Your message:**\n{field:ticket_desc}",
       color: "#5865F2",
       fields: [],
-      footerText: "",
+      footer: { text: "", icon_url: "" }, // Objekt-Struktur für den Builder
       timestamp: false,
     },
   };
@@ -351,8 +291,17 @@ export default function TicketsPage() {
         });
 
         const bd = tf.builderData || null;
-        setModal(bd?.modal || defaultTicketModal());
-        setResponse(bd?.response || defaultTicketResponse());
+        if (bd?.modal) setModal(bd.modal);
+        
+        // Kompatibilität sicherstellen
+        if (bd?.response) {
+            let r = bd.response;
+            if(!r.embed.footer && r.embed.footerText) {
+                r.embed.footer = { text: r.embed.footerText, icon_url: "" };
+            }
+            setResponse(r);
+        }
+
       } catch (e) {
         setLoadError(e?.message || "Unbekannter Fehler beim Laden");
       } finally {
@@ -523,117 +472,19 @@ export default function TicketsPage() {
     }
   }
 
-  /** ---------- Ticket form editor helpers ---------- */
-  function addComponent(kind) {
-    const list = modal.components || [];
-    if (list.length >= 5) return flashFormMsg("Max 5 Elemente pro Modal");
-    const id = `c_${Date.now()}`;
-
-    if (kind === "text_input") {
-      setModal((m) => ({
-        ...m,
-        components: [
-          ...list,
-          {
-            id,
-            kind: "text_input",
-            label: "Text Input",
-            description: "",
-            customId: `field_${list.length + 1}`,
-            required: true,
-            placeholder: "",
-            style: "paragraph",
-            maxLength: 1000,
-          },
-        ],
-      }));
-      return;
-    }
-
-    if (kind === "string_select") {
-      setModal((m) => ({
-        ...m,
-        components: [
-          ...list,
-          {
-            id,
-            kind: "string_select",
-            label: "Select",
-            description: "",
-            customId: `select_${list.length + 1}`,
-            required: true,
-            placeholder: "Choose…",
-            options: [
-              { id: "o1", label: "Option 1", value: "option_1", description: "" },
-              { id: "o2", label: "Option 2", value: "option_2", description: "" },
-            ],
-          },
-        ],
-      }));
-      return;
-    }
-
-    if (kind === "file_upload") {
-      setModal((m) => ({
-        ...m,
-        components: [
-          ...list,
-          {
-            id,
-            kind: "file_upload",
-            label: "File Upload",
-            description: "",
-            customId: `files_${list.length + 1}`,
-            required: false,
-          },
-        ],
-      }));
-    }
-  }
-
-  function updateComponent(id, patch) {
-    setModal((m) => ({
-      ...m,
-      components: (m.components || []).map((c) => (c.id === id ? { ...c, ...patch } : c)),
-    }));
-  }
-
-  function deleteComponent(id) {
-    setModal((m) => ({ ...m, components: (m.components || []).filter((c) => c.id !== id) }));
-  }
-
-  function moveComponent(id, dir) {
-    setModal((m) => {
-      const arr = [...(m.components || [])];
-      const i = arr.findIndex((x) => x.id === id);
-      if (i < 0) return m;
-      const j = dir === "up" ? i - 1 : i + 1;
-      if (j < 0 || j >= arr.length) return m;
-      const tmp = arr[i];
-      arr[i] = arr[j];
-      arr[j] = tmp;
-      return { ...m, components: arr };
-    });
-  }
-
-  /** ---------- Variable insert (for response) ---------- */
+  // --- Helpers für Variablen im Response Editor ---
   const [varCustomId, setVarCustomId] = useState("");
-
   function insertVarIntoResponseField(field, token) {
     setResponse((r) => {
       const next = { ...r };
-      if (field === "embed.title") next.embed = { ...next.embed, title: safeStr(next.embed?.title) + token };
-      if (field === "embed.description") next.embed = { ...next.embed, description: safeStr(next.embed?.description) + token };
+      // Helper vor allem für die Description, da EmbedBuilder den Rest macht
+      if (field === "embed.description") {
+          const old = next.embed?.description || "";
+          next.embed = { ...next.embed, description: old + token };
+      }
       if (field === "text") next.text = safeStr(next.text) + token;
-      if (field === "content") next.content = safeStr(next.content) + token;
       return next;
     });
-  }
-
-  function tokenField() {
-    const cid = safeStr(varCustomId).trim().replace(/[^\w:\-]/g, "");
-    if (!cid) return null;
-    return `{field:${cid}}`;
   }
 
   if (loading) return <div className="p-8 text-gray-300">Lade Ticketsystem…</div>;
@@ -642,7 +493,6 @@ export default function TicketsPage() {
 
   return (
     <div className="px-4 lg:px-10 py-8">
-      {/* more width */}
       <div className="mx-auto w-full max-w-[1700px]">
         <style jsx global>{`
           .discord-md strong { font-weight: 700; color: #fff; }
@@ -823,7 +673,7 @@ export default function TicketsPage() {
                             <span>{m.authorTag || m.authorId}</span>
                             <span>{new Date(m.timestamp || m.createdAt || Date.now()).toLocaleString("de-DE")}</span>
                           </div>
-                          <div className="text-sm text-gray-200 mt-2 whitespace-pre-wrap">{m.content}</div>
+                          <div className="text-sm text-gray-200 mt-2 whitespace-pre-wrap"><DiscordMarkdown text={m.content} /></div>
                         </div>
                       ))
                     )}
@@ -852,14 +702,6 @@ export default function TicketsPage() {
         {/* SETTINGS */}
         {activeTab === "settings" && (
           <div className="mt-6 relative">
-            {/**
-             * Layout-Idee:
-             * - Links: Settings + darunter Editor (Modal/Response)
-             * - Rechts: Preview fixed, vertikal mittig (nicht oben sticky)
-             *
-             * Damit links nicht unter die fixed Preview läuft:
-             * - auf XL geben wir rechts Padding, so breit wie Preview
-             */}
             <div className="xl:pr-[min(620px,44vw)] space-y-6">
               {/* Ticket Settings */}
               <form onSubmit={saveSettings} className="bg-[#1a1b1e] border border-white/5 rounded-2xl p-6 space-y-5">
@@ -966,269 +808,13 @@ export default function TicketsPage() {
                   </button>
                 </div>
 
-                {/* Modal Editor */}
+                {/* Modal Editor - HIER GEÄNDERT */}
                 {editorTab === "modal" && (
-                  <div className="rounded-2xl border border-white/10 bg-black/20 p-4 space-y-4">
-                    <div className="flex items-center justify-between">
-                      <div className="text-white font-bold">Modal (Ticket Form)</div>
-                      <div className="flex gap-2">
-                        <button
-                          type="button"
-                          onClick={() => addComponent("text_input")}
-                          className="px-3 py-2 rounded-lg bg-white/5 hover:bg-white/10 text-sm font-bold text-white inline-flex items-center gap-2"
-                        >
-                          <Plus className="w-4 h-4" /> Text
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => addComponent("string_select")}
-                          className="px-3 py-2 rounded-lg bg-white/5 hover:bg-white/10 text-sm font-bold text-white inline-flex items-center gap-2"
-                        >
-                          <Plus className="w-4 h-4" /> Select
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => addComponent("file_upload")}
-                          className="px-3 py-2 rounded-lg bg-white/5 hover:bg-white/10 text-sm font-bold text-white inline-flex items-center gap-2"
-                        >
-                          <Plus className="w-4 h-4" /> File
-                        </button>
-                      </div>
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label className="text-gray-300 text-xs uppercase font-bold tracking-wider">Title</Label>
-                      <Input
-                        value={modal.title}
-                        onChange={(e) => setModal((m) => ({ ...m, title: e.target.value }))}
-                        className="bg-black/20 border border-white/10 text-white"
-                        maxLength={45}
-                      />
-                    </div>
-
-                    <div className="space-y-3">
-                      {(modal.components || []).map((c, idx) => (
-                        <div key={c.id} className="rounded-xl border border-white/10 bg-black/30 p-3 space-y-3">
-                          <div className="flex items-center justify-between gap-2">
-                            <div className="text-white font-bold text-sm">
-                              {idx + 1}. {c.kind}
-                            </div>
-                            <div className="flex items-center gap-1">
-                              <button
-                                type="button"
-                                onClick={() => moveComponent(c.id, "up")}
-                                className="p-2 rounded-lg bg-white/5 hover:bg-white/10"
-                                title="Up"
-                              >
-                                <ChevronUp className="w-4 h-4 text-gray-200" />
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => moveComponent(c.id, "down")}
-                                className="p-2 rounded-lg bg-white/5 hover:bg-white/10"
-                                title="Down"
-                              >
-                                <ChevronDown className="w-4 h-4 text-gray-200" />
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => deleteComponent(c.id)}
-                                className="p-2 rounded-lg bg-red-500/15 hover:bg-red-500/25"
-                                title="Delete"
-                              >
-                                <Trash2 className="w-4 h-4 text-red-200" />
-                              </button>
-                            </div>
-                          </div>
-
-                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                            <div className="space-y-1">
-                              <Label className="text-gray-300 text-xs uppercase font-bold tracking-wider">Label</Label>
-                              <Input
-                                value={c.label}
-                                onChange={(e) => updateComponent(c.id, { label: e.target.value })}
-                                className="bg-black/20 border border-white/10 text-white"
-                                maxLength={45}
-                              />
-                            </div>
-                            <div className="space-y-1">
-                              <Label className="text-gray-300 text-xs uppercase font-bold tracking-wider">Custom ID</Label>
-                              <Input
-                                value={c.customId}
-                                onChange={(e) => updateComponent(c.id, { customId: e.target.value })}
-                                className="bg-black/20 border border-white/10 text-white"
-                                maxLength={100}
-                              />
-                            </div>
-                          </div>
-
-                          <div className="space-y-1">
-                            <Label className="text-gray-300 text-xs uppercase font-bold tracking-wider">
-                              Description (optional)
-                            </Label>
-                            <Input
-                              value={c.description || ""}
-                              onChange={(e) => updateComponent(c.id, { description: e.target.value })}
-                              className="bg-black/20 border border-white/10 text-white"
-                              maxLength={100}
-                            />
-                          </div>
-
-                          <label className="flex items-center gap-2 text-sm text-gray-200">
-                            <input
-                              type="checkbox"
-                              checked={!!c.required}
-                              onChange={(e) => updateComponent(c.id, { required: e.target.checked })}
-                              className="accent-[#5865F2]"
-                            />
-                            Required
-                          </label>
-
-                          {c.kind === "text_input" && (
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                              <div className="space-y-1">
-                                <Label className="text-gray-300 text-xs uppercase font-bold tracking-wider">Style</Label>
-                                <select
-                                  value={c.style || "paragraph"}
-                                  onChange={(e) => updateComponent(c.id, { style: e.target.value })}
-                                  className="w-full bg-black/20 border border-white/10 text-white rounded-lg px-3 py-2 text-sm focus:border-[#5865F2] outline-none appearance-none"
-                                >
-                                  <option value="short" className="bg-[#1a1b1e]">
-                                    Short
-                                  </option>
-                                  <option value="paragraph" className="bg-[#1a1b1e]">
-                                    Paragraph
-                                  </option>
-                                </select>
-                              </div>
-                              <div className="space-y-1">
-                                <Label className="text-gray-300 text-xs uppercase font-bold tracking-wider">Max Length</Label>
-                                <Input
-                                  value={c.maxLength ?? 1000}
-                                  onChange={(e) =>
-                                    updateComponent(c.id, { maxLength: Number(e.target.value || 1000) })
-                                  }
-                                  className="bg-black/20 border border-white/10 text-white"
-                                  type="number"
-                                  min={1}
-                                  max={4000}
-                                />
-                              </div>
-                              <div className="space-y-1 sm:col-span-2">
-                                <Label className="text-gray-300 text-xs uppercase font-bold tracking-wider">Placeholder</Label>
-                                <Input
-                                  value={c.placeholder || ""}
-                                  onChange={(e) => updateComponent(c.id, { placeholder: e.target.value })}
-                                  className="bg-black/20 border border-white/10 text-white"
-                                  maxLength={100}
-                                />
-                              </div>
-                            </div>
-                          )}
-
-                          {c.kind === "string_select" && (
-                            <div className="space-y-3">
-                              <div className="space-y-1">
-                                <Label className="text-gray-300 text-xs uppercase font-bold tracking-wider">Placeholder</Label>
-                                <Input
-                                  value={c.placeholder || ""}
-                                  onChange={(e) => updateComponent(c.id, { placeholder: e.target.value })}
-                                  className="bg-black/20 border border-white/10 text-white"
-                                  maxLength={100}
-                                />
-                              </div>
-
-                              <div className="space-y-2">
-                                <div className="flex items-center justify-between">
-                                  <div className="text-white font-bold text-sm">Options</div>
-                                  <button
-                                    type="button"
-                                    onClick={() => {
-                                      const next = [...(c.options || [])];
-                                      if (next.length >= 25) return flashFormMsg("Max 25 Optionen");
-                                      next.push({
-                                        id: `o_${Date.now()}`,
-                                        label: `Option ${next.length + 1}`,
-                                        value: `option_${next.length + 1}`,
-                                        description: "",
-                                      });
-                                      updateComponent(c.id, { options: next });
-                                    }}
-                                    className="px-3 py-2 rounded-lg bg-white/5 hover:bg-white/10 text-sm font-bold text-white inline-flex items-center gap-2"
-                                  >
-                                    <Plus className="w-4 h-4" /> Add
-                                  </button>
-                                </div>
-
-                                {(c.options || []).map((o) => (
-                                  <div key={o.id} className="rounded-xl border border-white/10 bg-black/20 p-3 space-y-2">
-                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                                      <Input
-                                        value={o.label}
-                                        onChange={(e) => {
-                                          const next = (c.options || []).map((x) =>
-                                            x.id === o.id ? { ...x, label: e.target.value } : x
-                                          );
-                                          updateComponent(c.id, { options: next });
-                                        }}
-                                        className="bg-black/20 border border-white/10 text-white"
-                                        placeholder="Label"
-                                        maxLength={100}
-                                      />
-                                      <Input
-                                        value={o.value}
-                                        onChange={(e) => {
-                                          const next = (c.options || []).map((x) =>
-                                            x.id === o.id ? { ...x, value: e.target.value } : x
-                                          );
-                                          updateComponent(c.id, { options: next });
-                                        }}
-                                        className="bg-black/20 border border-white/10 text-white"
-                                        placeholder="Value"
-                                        maxLength={100}
-                                      />
-                                    </div>
-                                    <div className="flex gap-2">
-                                      <Input
-                                        value={o.description || ""}
-                                        onChange={(e) => {
-                                          const next = (c.options || []).map((x) =>
-                                            x.id === o.id ? { ...x, description: e.target.value } : x
-                                          );
-                                          updateComponent(c.id, { options: next });
-                                        }}
-                                        className="bg-black/20 border border-white/10 text-white"
-                                        placeholder="Description (optional)"
-                                        maxLength={100}
-                                      />
-                                      <button
-                                        type="button"
-                                        onClick={() => {
-                                          const next = (c.options || []).filter((x) => x.id !== o.id);
-                                          updateComponent(c.id, { options: next });
-                                        }}
-                                        className="px-3 py-2 rounded-lg bg-red-500/15 hover:bg-red-500/25"
-                                        title="Delete option"
-                                      >
-                                        <X className="w-4 h-4 text-red-200" />
-                                      </button>
-                                    </div>
-                                  </div>
-                                ))}
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-
-                    <div className="text-[11px] text-gray-500">
-                      Speichern erzeugt automatisch den richtigen BOT-JSON Code (ohne Copy/Paste).
-                    </div>
-                  </div>
+                  /* Wir nutzen jetzt den ausgelagerten ModalBuilder */
+                  <ModalBuilder data={modal} onChange={setModal} />
                 )}
 
-                {/* Response Editor */}
+                {/* Response Editor - HIER GEÄNDERT */}
                 {editorTab === "response" && (
                   <div className="rounded-2xl border border-white/10 bg-black/20 p-4 space-y-4">
                     <div className="text-white font-bold">Response</div>
@@ -1296,9 +882,8 @@ export default function TicketsPage() {
                           type="button"
                           className="bg-white/5 hover:bg-white/10"
                           onClick={() => {
-                            const tok = tokenField();
-                            if (!tok) return flashFormMsg("Custom ID fehlt");
-                            insertVarIntoResponseField("embed.description", tok);
+                            const tok = safeStr(varCustomId).trim().replace(/[^\w:\-]/g, "");
+                            if (tok) insertVarIntoResponseField("embed.description", `{field:${tok}}`);
                           }}
                         >
                           Insert Field
@@ -1337,78 +922,11 @@ export default function TicketsPage() {
                           />
                         </div>
 
-                        <div className="space-y-2">
-                          <Label className="text-gray-300 text-xs uppercase font-bold tracking-wider">Embed title</Label>
-                          <Input
-                            value={response.embed?.title || ""}
-                            onChange={(e) =>
-                              setResponse((r) => ({ ...r, embed: { ...(r.embed || {}), title: e.target.value } }))
-                            }
-                            className="bg-black/20 border border-white/10 text-white"
-                            maxLength={256}
-                          />
-                        </div>
-
-                        <div className="space-y-2">
-                          <Label className="text-gray-300 text-xs uppercase font-bold tracking-wider">Embed description</Label>
-                          <textarea
-                            value={response.embed?.description || ""}
-                            onChange={(e) =>
-                              setResponse((r) => ({
-                                ...r,
-                                embed: { ...(r.embed || {}), description: e.target.value },
-                              }))
-                            }
-                            className="w-full min-h-[110px] rounded-xl bg-black/20 border border-white/10 px-3 py-2 text-sm text-white outline-none focus:border-[#5865F2]"
-                            maxLength={4096}
-                          />
-                        </div>
-
-                        <div className="space-y-2">
-                          <Label className="text-gray-300 text-xs uppercase font-bold tracking-wider">Color</Label>
-                          <div className="flex items-center gap-2">
-                            <input
-                              type="color"
-                              value={toHexColor(response.embed?.color)}
-                              onChange={(e) =>
-                                setResponse((r) => ({ ...r, embed: { ...(r.embed || {}), color: e.target.value } }))
-                              }
-                              className="h-10 w-12 rounded-md bg-transparent border border-white/10"
-                            />
-                            <Input
-                              value={toHexColor(response.embed?.color)}
-                              onChange={(e) =>
-                                setResponse((r) => ({ ...r, embed: { ...(r.embed || {}), color: e.target.value } }))
-                              }
-                              className="bg-black/20 border border-white/10 text-white"
-                              placeholder="#5865F2"
-                            />
-                          </div>
-                        </div>
-
-                        <label className="flex items-center gap-2 text-sm text-gray-200">
-                          <input
-                            type="checkbox"
-                            checked={!!response.embed?.timestamp}
-                            onChange={(e) =>
-                              setResponse((r) => ({ ...r, embed: { ...(r.embed || {}), timestamp: e.target.checked } }))
-                            }
-                            className="accent-[#5865F2]"
-                          />
-                          Timestamp
-                        </label>
-
-                        <div className="space-y-2">
-                          <Label className="text-gray-300 text-xs uppercase font-bold tracking-wider">Footer (optional)</Label>
-                          <Input
-                            value={response.embed?.footerText || ""}
-                            onChange={(e) =>
-                              setResponse((r) => ({ ...r, embed: { ...(r.embed || {}), footerText: e.target.value } }))
-                            }
-                            className="bg-black/20 border border-white/10 text-white"
-                            placeholder="Footer text…"
-                          />
-                        </div>
+                        {/* Wir nutzen jetzt den EmbedBuilder anstatt der manuellen Inputs */}
+                        <EmbedBuilder 
+                            data={response.embed} 
+                            onChange={(newEmbed) => setResponse({...response, embed: newEmbed})} 
+                        />
                       </div>
                     )}
 
@@ -1422,7 +940,7 @@ export default function TicketsPage() {
               </div>
             </div>
 
-            {/* RIGHT PREVIEW: fixed + centered (nur XL) */}
+            {/* RIGHT PREVIEW: fixed + centered (nur XL) - HIER GEÄNDERT */}
             <div className="hidden xl:block">
               <div
                 className={cn(
@@ -1437,93 +955,40 @@ export default function TicketsPage() {
                     <div className="text-xs text-gray-500">rechts immer sichtbar</div>
                   </div>
 
-                  {/* Modal Preview */}
-                  <div className="rounded-xl border border-white/10 bg-black/20 p-4 space-y-3">
-                    <div className="text-white font-bold">Modal Preview</div>
-                    <div className="text-white font-black text-lg">{truncate(modal.title, 45)}</div>
+                  {editorTab === "modal" ? (
+                      /* NEUER PREVIEW IMPORT */
+                      <ModalPreview modal={modal} guildIconUrl={null} />
+                  ) : (
+                      <div className="rounded-xl border border-white/10 bg-black/20 p-4 space-y-3">
+                         <div className="text-white font-bold">Response Preview</div>
+                         
+                         {response.type === "text" && (
+                            <div className="rounded-xl border border-white/10 bg-[#0f1012] p-4 text-gray-200 text-sm whitespace-pre-wrap">
+                                <DiscordMarkdown text={response.text || ""} />
+                            </div>
+                         )}
 
-                    {(modal.components || []).slice(0, 5).map((c) => (
-                      <div key={c.id} className="rounded-xl border border-white/10 bg-black/30 p-3 space-y-2">
-                        <div className="text-xs font-bold uppercase tracking-wider text-gray-300">
-                          {truncate(c.label, 45)}
-                        </div>
-                        {c.description ? <div className="text-xs text-gray-500">{truncate(c.description, 100)}</div> : null}
-
-                        {c.kind === "text_input" && (
-                          <div className="rounded-lg border border-white/10 bg-black/20 px-3 py-2 text-gray-500 text-sm">
-                            {c.placeholder ? truncate(c.placeholder, 70) : "Text input…"}{" "}
-                            {c.required ? <span className="text-red-300">*</span> : null}
-                          </div>
-                        )}
-
-                        {c.kind === "string_select" && (
-                          <div className="rounded-lg border border-white/10 bg-black/20 px-3 py-2 text-gray-500 text-sm">
-                            {c.placeholder ? truncate(c.placeholder, 70) : "Select…"}{" "}
-                            {c.required ? <span className="text-red-300">*</span> : null}
-                          </div>
-                        )}
-
-                        {c.kind === "file_upload" && (
-                          <div className="rounded-lg border border-white/10 bg-black/20 px-3 py-2 text-gray-500 text-sm">
-                            File upload {c.required ? <span className="text-red-300">*</span> : null}
-                          </div>
-                        )}
-
-                        <div className="text-[11px] text-gray-600 font-mono">customId: {c.customId || "—"}</div>
-                      </div>
-                    ))}
-                  </div>
-
-                  {/* Response Preview */}
-                  <div className="rounded-xl border border-white/10 bg-black/20 p-4 space-y-3">
-                    <div className="text-white font-bold">Response Preview</div>
-
-                    {response.type === "text" && (
-                      <div className="rounded-xl border border-white/10 bg-[#0f1012] p-4 text-gray-200 text-sm whitespace-pre-wrap">
-                        <DiscordMarkdown text={response.text || ""} />
-                      </div>
-                    )}
-
-                    {response.type === "embed" && (
-                      <div className="rounded-xl border border-white/10 bg-[#0f1012] p-4">
-                        {response.content ? (
-                          <div className="text-gray-200 text-sm mb-3 whitespace-pre-wrap">
-                            <DiscordMarkdown text={response.content} />
-                          </div>
-                        ) : null}
-
-                        <div className="flex gap-3">
-                          <div className="w-1 rounded-full" style={{ background: toHexColor(response.embed?.color) }} />
-                          <div className="flex-1 space-y-2">
-                            {response.embed?.title ? (
-                              <div className="text-white font-bold">
-                                <DiscordMarkdown text={response.embed.title} />
+                         {response.type === "embed" && (
+                             <div className="rounded-xl border border-white/10 bg-[#0f1012] p-4">
+                                {response.content && <div className="text-gray-200 text-sm mb-3 whitespace-pre-wrap"><DiscordMarkdown text={response.content} /></div>}
+                                
+                                {/* NEUER PREVIEW IMPORT FÜR EMBEDS */}
+                                <EmbedPreview 
+                                embed={response.embed} 
+                                content={response.content || response.text} // Unterstützt Text-Mode und Embed-Content
+                                botName="Ticket Bot" // Oder currentGuild?.name für Servername
+                                botIconUrl={currentGuild?.icon ? `https://cdn.discordapp.com/icons/${currentGuild.id}/${currentGuild.icon}.png` : null}
+                            />
+                             </div>
+                         )}
+                         
+                         {response.type === "default" && (
+                              <div className="rounded-xl border border-white/10 bg-[#0f1012] p-4 text-gray-400 text-sm">
+                                Default bot response.
                               </div>
-                            ) : null}
-
-                            {response.embed?.description ? (
-                              <div className="text-gray-300 text-sm whitespace-pre-wrap">
-                                <DiscordMarkdown text={response.embed.description} />
-                              </div>
-                            ) : null}
-
-                            {response.embed?.footerText || response.embed?.timestamp ? (
-                              <div className="text-xs text-gray-400 pt-2">
-                                {response.embed?.footerText ? <DiscordMarkdown text={response.embed.footerText} /> : null}
-                                {response.embed?.timestamp ? <span> • {new Date().toLocaleString("de-DE")}</span> : null}
-                              </div>
-                            ) : null}
-                          </div>
-                        </div>
+                        )}
                       </div>
-                    )}
-
-                    {response.type === "default" && (
-                      <div className="rounded-xl border border-white/10 bg-[#0f1012] p-4 text-gray-400 text-sm">
-                        Default bot response.
-                      </div>
-                    )}
-                  </div>
+                  )}
 
                   {/* Debug Code */}
                   <div className="rounded-xl border border-white/10 bg-black/20 p-4 space-y-2">
