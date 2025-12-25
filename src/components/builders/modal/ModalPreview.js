@@ -143,7 +143,8 @@ export default function ModalPreview({ modal, guildIconUrl }) {
         </div>
         
         {modal.show_warning && (
-           <div className="px-5 pb-2">
+           // ÄNDERUNG: "pb-2" zu "mb-4" ändern für korrekten Abstand
+           <div className="px-5 mb-4">
              <div className="flex items-start gap-3 rounded-[6px] border border-[#F0B232]/50 bg-[#2B2D31] px-3 py-2">
                <div className="mt-0.5 text-[#F0B232]">⚠</div>
                <div className="text-xs text-[#DBDEE1]">This form will be submitted to <span className="font-semibold">This Bot</span>. Do not share passwords.</div>

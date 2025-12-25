@@ -1,226 +1,488 @@
 "use client";
 
-import React, { useRef, useState, useEffect } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { nanoid } from "nanoid";
-import { DndContext, PointerSensor, useSensor, useSensors } from "@dnd-kit/core";
-import { SortableContext, verticalListSortingStrategy, useSortable } from "@dnd-kit/sortable";
+import { 
+  DndContext, 
+  closestCenter, 
+  PointerSensor, 
+  useSensor, 
+  useSensors 
+} from "@dnd-kit/core";
+import { 
+  SortableContext, 
+  verticalListSortingStrategy, 
+  useSortable, 
+  arrayMove
+} from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { cn } from "@/lib/utils";
+import { cn } from "@/lib/utils"; 
+import { 
+  GripVertical, 
+  Trash2, 
+  Plus, 
+  ChevronDown, 
+  ChevronRight, 
+  TextCursor, 
+  List, 
+  Check,
+  Type,
+  Smile,
+  Hash,
+  AlignLeft,
+  MoreHorizontal
+} from "lucide-react";
 
-// --- KINDS & CONSTANTS ---
+// --- CONFIG ---
 const MAX_COMPONENTS = 5;
-const MAX_SELECT_OPTIONS = 25;
-const KINDS = {
-  TEXT_INPUT: "text_input",
-  STRING_SELECT: "string_select",
-  TEXT_DISPLAY: "text_display",
-  USER_SELECT: "user_select",
-  CHANNEL_SELECT: "channel_select",
-  ROLE_SELECT: "role_select",
-  MENTIONABLE_SELECT: "mentionable_select",
-  FILE_UPLOAD: "file_upload",
-};
+const MAX_OPTIONS = 25;
 
-function toSafeCustomId(s) {
-    const t = String(s ?? "").trim().replace(/\s+/g, "_").replace(/[^a-zA-Z0-9_:\-]/g, "").slice(0, 100);
-    return t || "id";
-}
-
-function defaultComponent(kind) {
-  const base = {
+// --- HELPERS ---
+function defaultComponent(kind = "text_input") {
+  return {
     id: nanoid(),
-    kind,
-    label: kind === KINDS.TEXT_INPUT ? "Text Input" : "Component", // Simplified labels
-    custom_id: toSafeCustomId(`input_${nanoid(8)}`),
+    kind, // 'text_input' | 'string_select'
+    custom_id: nanoid(10),
+    label: kind === "text_input" ? "Neue Frage" : "Neues Menü",
+    style: 1, // 1 = Short, 2 = Paragraph
     required: true,
-    collapsed: false, // Default open for better UX in embedded mode? Or true to save space.
-    description: "",
+    placeholder: "",
+    min_length: 0,
+    max_length: 1000,
+    options: kind === "string_select" ? [
+        { id: nanoid(), label: "Option 1", value: "opt_1", description: "", emoji: "" }
+    ] : [], 
+    collapsed: false,
   };
-  if (kind === KINDS.TEXT_INPUT) return { ...base, style: 1, max_length: 4000, placeholder: "" };
-  if (kind === KINDS.STRING_SELECT) return {
-      ...base,
-      placeholder: "Make a selection",
-      min_values: 1, max_values: 1,
-      options: [{ id: nanoid(), label: "Option", value: "option_1", description: "", emoji: "", isDefault: true, collapsed: false }]
-  };
-  if ([KINDS.USER_SELECT, KINDS.CHANNEL_SELECT, KINDS.ROLE_SELECT, KINDS.MENTIONABLE_SELECT].includes(kind)) {
-      return { ...base, placeholder: "Select…", min_values: 0, max_values: 1 };
-  }
-  if (kind === KINDS.TEXT_DISPLAY) return { ...base, required: false, content: "Info Text" };
-  return base;
 }
 
-// --- SUB-COMPONENTS (Toggle, Menu) ---
-function Toggle({ label, value, onChange }) {
-  const left = value ? 22 : 2;
-  return (
-    <div className="flex items-center justify-between rounded-md bg-[#141518] ring-1 ring-white/10 px-3 py-2">
-      <div className="text-sm text-[#DBDEE1]">{label}</div>
-      <button type="button" onClick={() => onChange(!value)} className={cn("relative h-6 w-11 rounded-full transition-colors cursor-pointer", value ? "bg-[#5865F2]" : "bg-white/10")}>
-        <span className="absolute top-0.5 h-5 w-5 rounded-full bg-white transition-[left]" style={{ left }} />
-      </button>
-    </div>
-  );
-}
+// --- COMPONENTS ---
 
-function AddComponentMenu({ onAdd, disabled }) {
-  const [open, setOpen] = useState(false);
-  const ref = useRef(null);
-  useEffect(() => {
-      const onDoc = (e) => { if (!ref.current?.contains(e.target)) setOpen(false); };
-      document.addEventListener("mousedown", onDoc); return () => document.removeEventListener("mousedown", onDoc);
-  }, []);
+// 1. Add Field Dropdown Menu
+function AddFieldMenu({ onAdd, disabled }) {
+    const [isOpen, setIsOpen] = useState(false);
+    const containerRef = useRef(null);
 
-  const items = [
-    { kind: KINDS.TEXT_INPUT, label: "Text Input", icon: "☰" },
-    { kind: KINDS.STRING_SELECT, label: "Select Menu", icon: "☑" },
-    { kind: KINDS.TEXT_DISPLAY, label: "Text Display", icon: "T" },
-    { kind: KINDS.USER_SELECT, label: "User Select", icon: "👥" },
-    { kind: KINDS.CHANNEL_SELECT, label: "Channel Select", icon: "#" },
-    { kind: KINDS.ROLE_SELECT, label: "Role Select", icon: "🛡" },
-    { kind: KINDS.MENTIONABLE_SELECT, label: "User & Role", icon: "@" },
-    { kind: KINDS.FILE_UPLOAD, label: "File Upload", icon: "📄" },
-  ];
+    useEffect(() => {
+        function onClickOutside(e) {
+            if (containerRef.current && !containerRef.current.contains(e.target)) setIsOpen(false);
+        }
+        document.addEventListener("mousedown", onClickOutside);
+        return () => document.removeEventListener("mousedown", onClickOutside);
+    }, []);
 
-  return (
-    <div className="relative" ref={ref}>
-      <button type="button" disabled={disabled} onClick={() => !disabled && setOpen(!open)} className={cn("inline-flex items-center gap-2 rounded-md bg-[#5865F2] px-3 py-2 text-xs font-semibold text-white cursor-pointer hover:bg-[#4f5ae6]", disabled && "opacity-50 cursor-not-allowed")}>Add <span className="text-base leading-none">▾</span></button>
-      {open && (
-        <div className="absolute right-0 mt-2 w-60 overflow-hidden rounded-xl border border-white/10 bg-[#111214] shadow-2xl z-50">
-          {items.map((x) => (
-            <button key={x.kind} type="button" onClick={() => { onAdd(x.kind); setOpen(false); }} className="w-full cursor-pointer px-3 py-2 text-left text-sm text-[#DBDEE1] hover:bg-white/5 flex items-center gap-2">
-              <span className="w-5 text-center text-[#B5BAC1]">{x.icon}</span><span className="font-semibold">{x.label}</span>
+    const handleSelect = (kind) => {
+        onAdd(kind);
+        setIsOpen(false);
+    };
+
+    return (
+        <div className="relative" ref={containerRef}>
+            <button 
+                type="button"
+                onClick={() => setIsOpen(!isOpen)}
+                disabled={disabled}
+                className={cn(
+                    "flex items-center gap-2 px-4 py-2 bg-[#5865F2] hover:bg-[#4752c4] text-white rounded-md text-sm font-medium transition-all shadow-sm",
+                    disabled && "opacity-50 cursor-not-allowed hover:bg-[#5865F2]"
+                )}
+            >
+                <Plus className="w-4 h-4" />
+                <span>Feld hinzufügen</span>
+                <ChevronDown className={cn("w-3.5 h-3.5 ml-1 transition-transform", isOpen && "rotate-180")} />
             </button>
-          ))}
+
+            {isOpen && (
+                <div className="absolute right-0 mt-2 w-56 bg-[#111214] border border-white/10 rounded-lg shadow-2xl z-50 overflow-hidden animate-in fade-in slide-in-from-top-2">
+                    <div className="p-1.5 space-y-1">
+                        <button 
+                            onClick={() => handleSelect('text_input')}
+                            className="w-full flex items-center gap-3 px-3 py-2.5 hover:bg-[#5865F2] hover:text-white text-gray-300 rounded-md transition-colors group text-left"
+                        >
+                            <div className="p-1.5 bg-[#1e1f22] rounded group-hover:bg-white/20">
+                                <TextCursor className="w-4 h-4" />
+                            </div>
+                            <div>
+                                <div className="text-sm font-bold">Textfeld</div>
+                                <div className="text-[10px] opacity-70">Für kurze oder lange Antworten</div>
+                            </div>
+                        </button>
+                        
+                        <button 
+                            onClick={() => handleSelect('string_select')}
+                            className="w-full flex items-center gap-3 px-3 py-2.5 hover:bg-[#5865F2] hover:text-white text-gray-300 rounded-md transition-colors group text-left"
+                        >
+                            <div className="p-1.5 bg-[#1e1f22] rounded group-hover:bg-white/20">
+                                <List className="w-4 h-4" />
+                            </div>
+                            <div>
+                                <div className="text-sm font-bold">Auswahlmenü</div>
+                                <div className="text-[10px] opacity-70">Dropdown mit Optionen</div>
+                            </div>
+                        </button>
+                    </div>
+                </div>
+            )}
         </div>
-      )}
-    </div>
-  );
+    );
 }
 
-// --- COMPONENT EDITOR ---
-function ComponentEditor({ comp, onUpdate }) {
-  return (
-    <div className="space-y-3">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            <label className="grid gap-1 min-w-0"><span className="text-xs text-[#B5BAC1]">Label <span className="text-red-400">*</span></span><input className="w-full rounded-md bg-[#1e1f22] px-3 py-2 text-sm text-[#DBDEE1] ring-1 ring-white/10 outline-none focus:ring-2 focus:ring-[#5865F2]" value={comp.label || ""} onChange={(e) => onUpdate({ label: e.target.value })} maxLength={45} /></label>
-            <label className="grid gap-1 min-w-0"><span className="text-xs text-[#B5BAC1]">custom_id</span><input className="w-full rounded-md bg-[#1e1f22] px-3 py-2 text-sm text-[#DBDEE1] ring-1 ring-white/10 outline-none focus:ring-2 focus:ring-[#5865F2]" value={comp.custom_id || ""} onChange={(e) => onUpdate({ custom_id: toSafeCustomId(e.target.value) })} /></label>
+// 2. Sortable Option Row (Inner)
+function SortableOptionRow({ option, onChange, onDelete, attributes, listeners, setNodeRef, transform, transition, isDragging }) {
+    const style = { 
+        transform: CSS.Transform.toString(transform), 
+        transition, 
+        opacity: isDragging ? 0.4 : 1,
+        position: "relative",
+        zIndex: isDragging ? 999 : "auto"
+    };
+
+    return (
+        <div ref={setNodeRef} style={style} className={cn("group flex items-start gap-3 bg-[#1e1f22] border border-white/5 p-3 rounded-lg mb-2 transition-all hover:border-white/10 hover:bg-[#232428]", isDragging && "border-[#5865F2] shadow-lg ring-1 ring-[#5865F2] bg-[#2b2d31]")}>
+            {/* Drag Handle */}
+            <button 
+                type="button" 
+                className="mt-3 text-gray-500 hover:text-gray-300 cursor-grab active:cursor-grabbing touch-none"
+                {...attributes} 
+                {...listeners}
+            >
+                <GripVertical className="w-4 h-4" />
+            </button>
+
+            {/* Inputs Grid */}
+            <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-3">
+                {/* Row 1: Label & Value */}
+                <div className="space-y-1.5">
+                    <label className="text-[10px] uppercase font-bold text-gray-500 pl-0.5">Label (Name)</label>
+                    <input 
+                        value={option.label} 
+                        onChange={(e) => onChange({...option, label: e.target.value})} 
+                        className="w-full bg-[#111214] border border-white/5 rounded px-2.5 py-1.5 text-xs text-white focus:border-[#5865F2] outline-none transition-colors"
+                        placeholder="Option Name"
+                    />
+                </div>
+                <div className="space-y-1.5">
+                    <label className="text-[10px] uppercase font-bold text-gray-500 pl-0.5">Value (Intern)</label>
+                    <input 
+                        value={option.value} 
+                        onChange={(e) => onChange({...option, value: e.target.value})} 
+                        className="w-full bg-[#111214] border border-white/5 rounded px-2.5 py-1.5 text-xs font-mono text-gray-300 focus:border-[#5865F2] outline-none transition-colors"
+                        placeholder="option_value"
+                    />
+                </div>
+
+                {/* Row 2: Description & Emoji */}
+                <div className="space-y-1.5">
+                    <label className="text-[10px] uppercase font-bold text-gray-500 pl-0.5 flex items-center gap-1"><AlignLeft className="w-3 h-3"/> Beschreibung</label>
+                    <input 
+                        value={option.description || ""} 
+                        onChange={(e) => onChange({...option, description: e.target.value})} 
+                        className="w-full bg-[#111214] border border-white/5 rounded px-2.5 py-1.5 text-xs text-gray-300 focus:border-[#5865F2] outline-none transition-colors"
+                        placeholder="Zusatztext (optional)"
+                    />
+                </div>
+                <div className="space-y-1.5">
+                    <label className="text-[10px] uppercase font-bold text-gray-500 pl-0.5 flex items-center gap-1"><Smile className="w-3 h-3"/> Emoji</label>
+                    <input 
+                        value={option.emoji || ""} 
+                        onChange={(e) => onChange({...option, emoji: e.target.value})} 
+                        className="w-full bg-[#111214] border border-white/5 rounded px-2.5 py-1.5 text-xs text-gray-300 focus:border-[#5865F2] outline-none transition-colors"
+                        placeholder="🚀"
+                    />
+                </div>
+            </div>
+
+            {/* Delete Button */}
+            <button 
+                type="button" 
+                onClick={() => onDelete(option.id)} 
+                className="mt-3 p-1.5 text-gray-500 hover:text-red-400 hover:bg-red-500/10 rounded transition-all opacity-0 group-hover:opacity-100"
+                title="Option löschen"
+            >
+                <Trash2 className="w-4 h-4" />
+            </button>
         </div>
-        <label className="grid gap-1 min-w-0"><span className="text-xs text-[#B5BAC1]">Description</span><input className="w-full rounded-md bg-[#1e1f22] px-3 py-2 text-sm text-[#DBDEE1] ring-1 ring-white/10 outline-none focus:ring-2 focus:ring-[#5865F2]" value={comp.description || ""} onChange={(e) => onUpdate({ description: e.target.value })} maxLength={100} /></label>
-        
-        {comp.kind !== KINDS.TEXT_DISPLAY && <Toggle label="Required" value={!!comp.required} onChange={(v) => onUpdate({ required: v })} />}
-        
-        {comp.kind === KINDS.TEXT_INPUT && (
-            <>
-                <Toggle label="Multiline" value={comp.style === 2} onChange={(v) => onUpdate({ style: v ? 2 : 1 })} />
-                <label className="grid gap-1"><span className="text-xs text-[#B5BAC1]">Placeholder</span><input className="w-full rounded-md bg-[#1e1f22] px-3 py-2 text-sm text-[#DBDEE1] ring-1 ring-white/10 outline-none focus:ring-2 focus:ring-[#5865F2]" value={comp.placeholder || ""} onChange={(e) => onUpdate({ placeholder: e.target.value })} maxLength={100} /></label>
-            </>
-        )}
-        
-        {comp.kind === KINDS.STRING_SELECT && (
-             <div className="space-y-2 pt-2 border-t border-white/10">
-                 <div className="text-xs text-[#B5BAC1]">Options</div>
-                 {(comp.options || []).map((opt, idx) => (
-                     <div key={opt.id} className="flex gap-2">
-                         <input value={opt.label} onChange={(e) => { const n = [...comp.options]; n[idx].label = e.target.value; onUpdate({ options: n }); }} className="flex-1 rounded-md bg-[#1e1f22] px-2 py-1 text-xs text-white ring-1 ring-white/10" placeholder="Label" />
-                         <input value={opt.value} onChange={(e) => { const n = [...comp.options]; n[idx].value = e.target.value; onUpdate({ options: n }); }} className="flex-1 rounded-md bg-[#1e1f22] px-2 py-1 text-xs text-white ring-1 ring-white/10" placeholder="Value" />
-                         <button onClick={() => { const n = comp.options.filter((_, i) => i !== idx); onUpdate({ options: n }); }} className="text-red-400 px-2 hover:bg-white/5 rounded">×</button>
-                     </div>
-                 ))}
-                 <button onClick={() => { if(comp.options.length >= MAX_SELECT_OPTIONS) return; onUpdate({ options: [...comp.options, { id: nanoid(), label: "New", value: "new", isDefault: false }] }); }} className="text-xs text-[#5865F2] hover:underline font-bold">+ Add Option</button>
-             </div>
-        )}
-    </div>
-  );
+    );
 }
 
-// --- SORTABLE WRAPPER ---
-function SortableComponentCard({ comp, onUpdate, onDelete }) {
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: comp.id });
-  const style = { transform: CSS.Transform.toString(transform), transition };
+function SortableOptionItem(props) {
+    const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: props.option.id });
+    return <SortableOptionRow {...props} attributes={attributes} listeners={listeners} setNodeRef={setNodeRef} transform={transform} transition={transition} isDragging={isDragging} />;
+}
+
+// 3. Option List Container
+function OptionListEditor({ options, onChange }) {
+    const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
+
+    const handleDragEnd = (event) => {
+        const { active, over } = event;
+        if (!over || active.id === over.id) return;
+        const oldIndex = options.findIndex(o => o.id === active.id);
+        const newIndex = options.findIndex(o => o.id === over.id);
+        if (oldIndex !== -1 && newIndex !== -1) {
+            onChange(arrayMove(options, oldIndex, newIndex));
+        }
+    };
+
+    const handleChange = (newOpt) => onChange(options.map(o => o.id === newOpt.id ? newOpt : o));
+    const handleDelete = (id) => onChange(options.filter(o => o.id !== id));
+    
+    const handleAdd = () => {
+        if (options.length >= MAX_OPTIONS) return;
+        onChange([...options, { id: nanoid(), label: "New Option", value: "new_val", description: "", emoji: "" }]);
+    };
+
+    return (
+        <div className="mt-6 pt-6 border-t border-white/5 space-y-4">
+            <div className="flex items-center justify-between">
+                <div className="flex flex-col">
+                    <label className="text-xs font-bold text-white flex items-center gap-2">
+                        Antwort-Möglichkeiten
+                    </label>
+                    <span className="text-[10px] text-gray-500">Definiere die Optionen für das Dropdown.</span>
+                </div>
+                <button 
+                    type="button"
+                    onClick={handleAdd}
+                    disabled={options.length >= MAX_OPTIONS}
+                    className="text-xs bg-[#5865F2]/10 hover:bg-[#5865F2] text-[#5865F2] hover:text-white border border-[#5865F2]/20 px-3 py-1.5 rounded-md flex items-center gap-1.5 transition-colors disabled:opacity-50 disabled:pointer-events-none font-medium"
+                >
+                    <Plus className="w-3.5 h-3.5"/> Option
+                </button>
+            </div>
+
+            <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+                <SortableContext items={options.map(o => o.id)} strategy={verticalListSortingStrategy}>
+                    <div className="flex flex-col">
+                        {options.map(opt => (
+                            <SortableOptionItem key={opt.id} option={opt} onChange={handleChange} onDelete={handleDelete} />
+                        ))}
+                    </div>
+                </SortableContext>
+            </DndContext>
+            
+            {options.length === 0 && (
+                <div className="text-center py-8 text-xs text-gray-500 bg-[#111214] rounded-lg border border-dashed border-white/5 flex flex-col items-center gap-2">
+                    <List className="w-6 h-6 opacity-20"/>
+                    <span>Keine Optionen vorhanden.</span>
+                </div>
+            )}
+            
+            <div className="text-[10px] text-gray-600 text-right pr-1">
+                {options.length} / {MAX_OPTIONS} Optionen
+            </div>
+        </div>
+    );
+}
+
+// 4. Component Row (Outer)
+function SortableComponentRow({ component, onChange, onDelete, attributes, listeners, setNodeRef, transform, transition, isDragging }) {
+  const style = { 
+      transform: CSS.Transform.toString(transform), 
+      transition, 
+      opacity: isDragging ? 0.5 : 1, 
+      position: "relative", 
+      zIndex: isDragging ? 50 : "auto" 
+  };
 
   return (
-    <div ref={setNodeRef} style={style} className={cn("rounded-2xl bg-white/[0.03] ring-1 ring-white/10 overflow-hidden", isDragging && "opacity-70")}>
-      <div className="flex items-center justify-between gap-3 px-3 py-3">
-        <div className="flex items-center gap-2 min-w-0">
-          <div {...attributes} {...listeners} className="h-8 w-8 rounded-md bg-white/5 ring-1 ring-white/10 flex items-center justify-center text-[#B5BAC1] cursor-grab active:cursor-grabbing">⋮⋮</div>
-          <button type="button" className="inline-flex items-center gap-2 cursor-pointer" onClick={() => onUpdate(comp.id, { collapsed: !comp.collapsed })}>
-            <span className="w-5 text-center text-[#B5BAC1]">{comp.collapsed ? "▸" : "▾"}</span>
-            <span className="text-sm font-semibold text-[#F2F3F5] truncate">{comp.label || "Component"}</span>
-            <span className="text-xs text-[#B5BAC1] truncate ml-1 opacity-60">({comp.kind})</span>
-          </button>
+    <div ref={setNodeRef} style={style} className={cn("rounded-xl border bg-[#1a1b1e] transition-all overflow-hidden mb-4", isDragging ? "border-[#5865F2] shadow-xl ring-1 ring-[#5865F2]" : "border-white/5 hover:border-white/10")}>
+      
+      {/* Header */}
+      <div className="flex items-center gap-4 p-4 bg-[#2b2d31]/30 border-b border-white/5 select-none">
+        <button type="button" className="touch-none p-2 text-gray-500 hover:text-gray-300 cursor-grab active:cursor-grabbing hover:bg-white/5 rounded" {...attributes} {...listeners}>
+          <GripVertical className="h-5 w-5" />
+        </button>
+
+        <div className="flex-1 cursor-pointer flex items-center gap-4" onClick={() => onChange({ ...component, collapsed: !component.collapsed })}>
+            <div className={cn("w-10 h-10 rounded-lg flex items-center justify-center border bg-gradient-to-br shadow-inner", component.kind === 'text_input' ? "from-blue-500/10 to-blue-500/5 border-blue-500/20 text-blue-400" : "from-orange-500/10 to-orange-500/5 border-orange-500/20 text-orange-400")}>
+                {component.kind === 'text_input' ? <TextCursor className="w-5 h-5"/> : <List className="w-5 h-5"/>}
+            </div>
+            <div className="flex flex-col gap-0.5">
+                <span className="text-sm font-bold text-gray-100">{component.label || "Unbenanntes Feld"}</span>
+                <span className="text-[11px] text-gray-500 font-mono flex items-center gap-1.5">
+                    {component.kind === 'text_input' ? "Text Input" : "Selection Menu"}
+                    <span className="w-1 h-1 rounded-full bg-gray-700"/>
+                    <span className="text-gray-600">ID:</span> {component.custom_id}
+                </span>
+            </div>
         </div>
-        <button type="button" onClick={() => onDelete(comp.id)} className="h-9 w-9 inline-flex items-center justify-center rounded-md bg-white/5 hover:bg-white/10 ring-1 ring-white/10 cursor-pointer text-red-300">🗑</button>
+
+        <div className="flex items-center gap-1">
+            <button type="button" onClick={() => onChange({ ...component, collapsed: !component.collapsed })} className="p-2 text-gray-400 hover:bg-white/5 hover:text-white rounded-lg transition-colors">
+                {component.collapsed ? <ChevronRight className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
+            </button>
+            <button type="button" onClick={() => onDelete(component.id)} className="p-2 text-gray-500 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-colors ml-1">
+                <Trash2 className="w-5 h-5" />
+            </button>
+        </div>
       </div>
-      {!comp.collapsed && (
-        <div className="px-4 pb-4">
-          <ComponentEditor comp={comp} onUpdate={(patch) => onUpdate(comp.id, patch)} />
+
+      {/* Body */}
+      {!component.collapsed && (
+        <div className="p-5 bg-[#18191c]">
+            
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {/* Left Column */}
+                <div className="space-y-4">
+                    <div className="space-y-1.5">
+                        <label className="text-[11px] uppercase font-bold text-gray-400 pl-1 flex items-center gap-1.5"><Type className="w-3.5 h-3.5"/> Frage / Label</label>
+                        <input 
+                            value={component.label} 
+                            onChange={(e) => onChange({...component, label: e.target.value})} 
+                            className="w-full bg-[#111214] border border-white/10 rounded-lg px-3.5 py-2.5 text-sm text-white focus:border-[#5865F2] outline-none placeholder:text-gray-600 transition-all shadow-sm focus:ring-1 focus:ring-[#5865F2]/20"
+                            maxLength={45}
+                            placeholder="Was möchtest du wissen?"
+                        />
+                    </div>
+                    <div className="space-y-1.5">
+                        <label className="text-[11px] uppercase font-bold text-gray-400 pl-1 flex items-center gap-1.5"><MoreHorizontal className="w-3.5 h-3.5"/> Placeholder</label>
+                        <input 
+                            value={component.placeholder || ""} 
+                            onChange={(e) => onChange({...component, placeholder: e.target.value})} 
+                            className="w-full bg-[#111214] border border-white/10 rounded-lg px-3.5 py-2.5 text-sm text-white focus:border-[#5865F2] outline-none placeholder:text-gray-600 transition-all shadow-sm focus:ring-1 focus:ring-[#5865F2]/20"
+                            maxLength={100}
+                            placeholder="Beispiel-Antwort oder Hinweis..."
+                        />
+                    </div>
+                </div>
+
+                {/* Right Column */}
+                <div className="space-y-4">
+                    <div className="space-y-1.5">
+                        <label className="text-[11px] uppercase font-bold text-gray-400 pl-1 flex items-center gap-1.5"><Hash className="w-3.5 h-3.5"/> Custom ID</label>
+                        <input 
+                            value={component.custom_id} 
+                            onChange={(e) => onChange({...component, custom_id: e.target.value})} 
+                            className="w-full bg-[#111214] border border-white/10 rounded-lg px-3.5 py-2.5 text-sm font-mono text-gray-300 focus:border-[#5865F2] outline-none transition-all shadow-sm focus:ring-1 focus:ring-[#5865F2]/20"
+                            maxLength={100}
+                        />
+                    </div>
+                    
+                    <div className="flex items-center justify-between pt-6 px-1">
+                        <div 
+                            onClick={() => onChange({...component, required: !component.required})}
+                            className="flex items-center gap-3 cursor-pointer group select-none"
+                        >
+                            <div className={cn("w-5 h-5 rounded-[5px] border flex items-center justify-center transition-all shadow-sm", component.required ? "bg-[#5865F2] border-[#5865F2]" : "border-gray-600 bg-[#111214] group-hover:border-gray-400")}>
+                                {component.required && <Check className="w-3.5 h-3.5 text-white stroke-[3]" />}
+                            </div>
+                            <span className={cn("text-xs font-medium group-hover:text-white transition-colors", component.required ? "text-white" : "text-gray-400")}>Pflichtfeld</span>
+                        </div>
+
+                        {component.kind === 'text_input' && (
+                            <div className="flex bg-[#111214] p-1 rounded-lg border border-white/10">
+                                <button onClick={() => onChange({...component, style: 1})} className={cn("px-4 py-1.5 rounded-md text-[11px] font-bold uppercase transition-all", component.style === 1 ? "bg-[#5865F2] text-white shadow-sm" : "text-gray-500 hover:text-gray-300 hover:bg-white/5")}>Kurz</button>
+                                <button onClick={() => onChange({...component, style: 2})} className={cn("px-4 py-1.5 rounded-md text-[11px] font-bold uppercase transition-all", component.style === 2 ? "bg-[#5865F2] text-white shadow-sm" : "text-gray-500 hover:text-gray-300 hover:bg-white/5")}>Lang</button>
+                            </div>
+                        )}
+                    </div>
+                </div>
+            </div>
+
+            {/* Options Editor (Only for Select) */}
+            {component.kind === 'string_select' && (
+                <OptionListEditor 
+                    options={component.options || []} 
+                    onChange={(newOpts) => onChange({ ...component, options: newOpts })} 
+                />
+            )}
         </div>
       )}
     </div>
   );
 }
 
-// --- MAIN EXPORT ---
-export default function ModalBuilder({ data, onChange }) {
-  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }));
+function SortableComponentItem(props) {
+    const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: props.component.id });
+    return <SortableComponentRow {...props} attributes={attributes} listeners={listeners} setNodeRef={setNodeRef} transform={transform} transition={transition} isDragging={isDragging} />;
+}
 
-  // Helper zum Updaten des "data" Objekts
-  const updateModal = (patch) => onChange({ ...data, ...patch });
-  
-  const addComponent = (kind) => {
-      if ((data.components || []).length >= MAX_COMPONENTS) return;
-      updateModal({ components: [...(data.components || []), defaultComponent(kind)] });
-  };
-  
-  const updateComponent = (id, patch) => {
-      updateModal({ components: (data.components || []).map((c) => (c.id === id ? { ...c, ...patch } : c)) });
-  };
-  
-  const removeComponent = (id) => {
-      updateModal({ components: (data.components || []).filter((c) => c.id !== id) });
-  };
-  
+// --- MAIN BUILDER ---
+export default function ModalBuilder({ data, onChange }) {
+  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
+
   const onDragEnd = (event) => {
-      const { active, over } = event;
-      if (!over || active.id === over.id) return;
-      const arr = [...(data.components || [])];
-      const from = arr.findIndex((x) => x.id === active.id);
-      const to = arr.findIndex((x) => x.id === over.id);
-      if (from < 0 || to < 0) return;
-      const [moved] = arr.splice(from, 1);
-      arr.splice(to, 0, moved);
-      updateModal({ components: arr });
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+    
+    const oldIndex = (data.components || []).findIndex(c => c.id === active.id);
+    const newIndex = (data.components || []).findIndex(c => c.id === over.id);
+    
+    if (oldIndex !== -1 && newIndex !== -1) {
+        onChange({ ...data, components: arrayMove(data.components, oldIndex, newIndex) });
+    }
   };
+
+  const addComp = (kind) => {
+      if ((data.components || []).length >= MAX_COMPONENTS) return;
+      onChange({ ...data, components: [...(data.components || []), defaultComponent(kind)] });
+  };
+
+  const changeComp = (c) => onChange({ ...data, components: data.components.map(x => x.id === c.id ? c : x) });
+  const delComp = (id) => onChange({ ...data, components: data.components.filter(x => x.id !== id) });
 
   return (
-    <div className="space-y-6">
-       {/* Modal Settings */}
-       <div className="rounded-2xl bg-white/[0.03] shadow-sm ring-1 ring-white/10 p-4 space-y-3">
-          <div className="text-sm font-semibold border-b border-white/10 pb-2 mb-2">Modal Settings</div>
-          <label className="grid gap-1"><span className="text-xs text-[#B5BAC1]">Title <span className="text-red-400">*</span></span><input className="rounded-md bg-[#1e1f22] px-3 py-2 text-sm text-[#DBDEE1] ring-1 ring-white/10 outline-none focus:ring-2 focus:ring-[#5865F2]" value={data.title || ""} onChange={(e) => updateModal({ title: e.target.value })} maxLength={45} /></label>
-          <label className="grid gap-1"><span className="text-xs text-[#B5BAC1]">custom_id</span><input className="rounded-md bg-[#1e1f22] px-3 py-2 text-sm text-[#DBDEE1] ring-1 ring-white/10 outline-none focus:ring-2 focus:ring-[#5865F2]" value={data.custom_id || ""} onChange={(e) => updateModal({ custom_id: e.target.value })} /></label>
-          <Toggle label="Show warning (debug)" value={!!data.show_warning} onChange={(v) => updateModal({ show_warning: v })} />
-       </div>
+    <div className="space-y-8 animate-in fade-in slide-in-from-bottom-2 duration-500">
+        
+        {/* Title Input */}
+        <div className="bg-[#1e1f22] p-6 rounded-xl border border-white/5 shadow-sm">
+            <div className="space-y-2">
+                <label className="text-[11px] uppercase font-bold text-gray-400 pl-1 flex items-center gap-2">
+                    <Type className="w-3.5 h-3.5 text-[#5865F2]" /> Fenstertitel
+                </label>
+                <input 
+                    value={data.title || ""} 
+                    onChange={(e) => onChange({...data, title: e.target.value})} 
+                    className="w-full bg-[#111214] border border-white/10 rounded-lg px-4 py-3 text-sm font-bold text-white focus:border-[#5865F2] outline-none transition-all shadow-inner focus:ring-1 focus:ring-[#5865F2]/30"
+                    placeholder="Titel des Fensters (z.B. Support Ticket)"
+                    maxLength={45}
+                />
+            </div>
+        </div>
 
-       {/* Components List */}
-       <div className="rounded-2xl bg-white/[0.03] shadow-sm ring-1 ring-white/10 p-4 space-y-4">
-          <div className="flex items-center justify-between border-b border-white/10 pb-3">
-              <div className="text-xs text-[#B5BAC1]">Components ({(data.components || []).length}/{MAX_COMPONENTS})</div>
-              <AddComponentMenu onAdd={addComponent} disabled={(data.components || []).length >= MAX_COMPONENTS} />
-          </div>
-          
-          <DndContext sensors={sensors} onDragEnd={onDragEnd}>
-              <SortableContext items={(data.components || []).map(c => c.id)} strategy={verticalListSortingStrategy}>
-                  <div className="space-y-3">
-                      {(data.components || []).map((c) => (
-                          <SortableComponentCard key={c.id} comp={c} onUpdate={updateComponent} onDelete={removeComponent} />
-                      ))}
-                  </div>
-              </SortableContext>
-          </DndContext>
-          {(data.components || []).length === 0 && <div className="text-center text-xs text-gray-500 py-4">No components yet. Add one!</div>}
-       </div>
+        {/* Components Manager */}
+        <div>
+            <div className="flex items-end justify-between mb-5 px-1">
+                <div>
+                    <div className="text-white font-bold text-lg flex items-center gap-2">
+                        Formular Felder
+                        <span className="text-xs font-medium text-gray-500 bg-white/5 px-2 py-0.5 rounded-full border border-white/5">
+                            { (data.components || []).length } / {MAX_COMPONENTS}
+                        </span>
+                    </div>
+                    <p className="text-xs text-gray-400 mt-1">Definiere die Fragen, die der User beantworten muss.</p>
+                </div>
+                
+                {/* NEW DROPDOWN MENU */}
+                <AddFieldMenu onAdd={addComp} disabled={(data.components || []).length >= MAX_COMPONENTS} />
+            </div>
+
+            <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
+                <SortableContext items={(data.components || []).map(c => c.id)} strategy={verticalListSortingStrategy}>
+                    <div className="flex flex-col gap-1">
+                        {(data.components || []).map(comp => (
+                            <SortableComponentItem 
+                                key={comp.id} 
+                                component={comp} 
+                                onChange={changeComp} 
+                                onDelete={delComp} 
+                            />
+                        ))}
+                    </div>
+                </SortableContext>
+            </DndContext>
+
+            {(data.components || []).length === 0 && (
+                <div className="flex flex-col items-center justify-center py-16 border-2 border-dashed border-white/5 rounded-2xl bg-white/[0.01]">
+                    <div className="w-16 h-16 rounded-full bg-white/5 flex items-center justify-center mb-4">
+                        <List className="w-8 h-8 text-gray-600 opacity-50"/>
+                    </div>
+                    <div className="text-sm font-medium text-gray-300">Dein Formular ist leer</div>
+                    <div className="text-xs text-gray-500 mt-1">Klicke oben auf "Feld hinzufügen", um zu starten.</div>
+                </div>
+            )}
+        </div>
     </div>
   );
 }
