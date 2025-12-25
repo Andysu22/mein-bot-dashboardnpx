@@ -2,7 +2,6 @@
 import React from "react";
 import DiscordMarkdown from "../shared/DiscordMarkdown";
 
-// Helper für Farben
 function toHexColor(s) {
   const t = String(s ?? "").trim();
   if (!t) return "#5865F2";
@@ -11,25 +10,26 @@ function toHexColor(s) {
 }
 
 export default function EmbedPreview({ 
-  embed,       // Das Embed-Objekt
-  content,     // Der Nachrichtentext über dem Embed
-  botName,     // Name des Bots (z.B. "Ticket Bot")
-  botIconUrl,  // URL zum Server-Icon oder Bot-Avatar
-  timestamp    // Optional: Datum für den Message-Header
+  embed,       // Das Embed Daten-Objekt
+  content,     // Der Text ÜBER dem Embed
+  botName,     // Name des Bots
+  botIconUrl,  // Profilbild URL
+  timestamp    // Datum
 }) {
-  // Fallbacks
+  // Fallbacks, falls Daten leer sind
   const data = embed || {};
   const color = toHexColor(data.color);
-  const name = botName || "App";
-  const avatar = botIconUrl || "https://cdn.discordapp.com/embed/avatars/0.png";
+  const name = botName || "Ticket Bot";
+  // Standard Discord Icon als Fallback
+  const avatar = botIconUrl || "https://cdn.discordapp.com/embed/avatars/0.png"; 
   const time = timestamp || new Date();
 
   return (
-    <div className="w-full font-sans">
-      {/* Message Container (Hover Effekt wie in Discord) */}
+    <div className="w-full font-sans text-left">
+      {/* Container für die ganze Nachricht */}
       <div className="flex gap-4 py-0.5 hover:bg-[#040405]/7 rounded -mx-2 px-2 transition-colors group items-start">
         
-        {/* LINK: Avatar */}
+        {/* LINKER TEIL: Profilbild */}
         <div className="flex-shrink-0 cursor-pointer mt-0.5">
           <img 
             src={avatar} 
@@ -39,10 +39,10 @@ export default function EmbedPreview({
           />
         </div>
 
-        {/* RECHTS: Inhalt */}
+        {/* RECHTER TEIL: Header, Content, Embed */}
         <div className="min-w-0 flex-1">
           
-          {/* HEADER: Name • APP • Zeit */}
+          {/* Header Zeile: Name, APP-Tag, Zeit */}
           <div className="flex items-center gap-1.5 mb-1 leading-none">
             <span className="text-white font-medium hover:underline cursor-pointer text-[1rem]">
               {name}
@@ -55,21 +55,22 @@ export default function EmbedPreview({
             </span>
           </div>
 
-          {/* CONTENT: Text über dem Embed */}
+          {/* Nachrichtentext (Content) */}
           {content && (
-            <div className="text-[#dbdee1] text-[0.9375rem] leading-[1.375rem] whitespace-pre-wrap break-words mb-2">
+            <div className="text-[#dbdee1] text-[0.9375rem] leading-[1.375rem] whitespace-pre-wrap break-words mb-1">
               <DiscordMarkdown text={content} />
             </div>
           )}
 
-          {/* EMBED: Der eigentliche Kasten */}
+          {/* Das Embed selbst */}
+          {/* Der farbige Strich ist hier border-l-4 direkt am Container */}
           <div 
-            className="grid max-w-[520px] rounded bg-[#2b2d31] overflow-hidden border-l-4"
+            className="grid max-w-[520px] rounded bg-[#2b2d31] overflow-hidden border-l-4 box-border"
             style={{ borderLeftColor: color }}
           >
             <div className="grid gap-2 p-4">
               
-              {/* Top Area: Author & Title & Description + Thumbnail */}
+              {/* Obere Reihe: Author, Title, Description + Thumbnail rechts */}
               <div className="flex gap-4">
                 <div className="flex-1 min-w-0 space-y-1.5">
                   
@@ -105,7 +106,7 @@ export default function EmbedPreview({
                   )}
                 </div>
 
-                {/* Thumbnail (Oben Rechts) */}
+                {/* Thumbnail */}
                 {data.thumbnail_url && (
                   <img 
                     src={data.thumbnail_url} 
@@ -132,7 +133,7 @@ export default function EmbedPreview({
                 </div>
               )}
 
-              {/* Big Image (Unten) */}
+              {/* Großes Bild unten */}
               {data.image_url && (
                 <div className="mt-1 rounded overflow-hidden cursor-pointer">
                   <img 
