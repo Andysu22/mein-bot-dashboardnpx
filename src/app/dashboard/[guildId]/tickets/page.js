@@ -12,7 +12,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 
-// --- BUILDER IMPORTS ---
 import ModalBuilder from "@/components/builders/modal/ModalBuilder";
 import ModalPreview from "@/components/builders/modal/ModalPreview";
 import EmbedBuilder from "@/components/builders/embed/EmbedBuilder";
@@ -23,7 +22,6 @@ function cn(...xs) { return xs.filter(Boolean).join(" "); }
 function safeStr(v) { return String(v ?? ""); }
 function truncate(s, max) { return String(s ?? "").length > max ? String(s ?? "").slice(0, max - 1) + "…" : String(s ?? ""); }
 
-// --- DISCORD BUTTON COMPONENT ---
 function DiscordButton({ label, emoji, style = "Primary" }) {
     const styles = {
         Primary: "bg-[#5865F2] hover:bg-[#4752c4] active:bg-[#3c45a5]",
@@ -31,11 +29,8 @@ function DiscordButton({ label, emoji, style = "Primary" }) {
         Success: "bg-[#248046] hover:bg-[#1a6334] active:bg-[#15562b]",
         Danger: "bg-[#da373c] hover:bg-[#a1282c] active:bg-[#8f2023]"
     };
-    
-    // Normalisieren
     const key = style.charAt(0).toUpperCase() + style.slice(1).toLowerCase();
     const bg = styles[key] || styles.Primary;
-
     return (
         <div className={cn(bg, "h-[32px] px-[16px] min-w-[60px] rounded-[3px] text-white text-[14px] font-medium flex items-center justify-center gap-1.5 transition-colors cursor-pointer select-none shadow-sm")}>
             {emoji && <span className="text-[1.1rem] leading-none">{emoji}</span>}
@@ -44,70 +39,41 @@ function DiscordButton({ label, emoji, style = "Primary" }) {
     );
 }
 
-// --- CUSTOM SELECT COMPONENT ---
 function DiscordSelect({ label, value, onChange, options, placeholder, icon: Icon }) {
   const [isOpen, setIsOpen] = useState(false);
   const selectedOption = options.find(o => o.value === value);
   const containerRef = useRef(null);
-
   useEffect(() => {
     function handleClickOutside(event) {
-      if (containerRef.current && !containerRef.current.contains(event.target)) {
-        setIsOpen(false);
-      }
+      if (containerRef.current && !containerRef.current.contains(event.target)) { setIsOpen(false); }
     }
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
-
   return (
     <div className="space-y-1.5" ref={containerRef}>
       <Label className="text-gray-400 text-xs uppercase font-bold tracking-wider pl-1">{label}</Label>
       <div className="relative">
-        <div 
-          onClick={() => setIsOpen(!isOpen)}
-          className={cn(
-            "w-full bg-[#1e1f22] border border-black/20 text-gray-200 rounded-md px-3 py-2.5 text-sm cursor-pointer flex items-center justify-between transition-all hover:bg-[#232428] hover:border-black/40",
-            isOpen ? "border-[#5865F2] ring-1 ring-[#5865F2] rounded-b-none border-b-0" : ""
-          )}
-        >
+        <div onClick={() => setIsOpen(!isOpen)} className={cn("w-full bg-[#1e1f22] border border-black/20 text-gray-200 rounded-md px-3 py-2.5 text-sm cursor-pointer flex items-center justify-between transition-all hover:bg-[#232428] hover:border-black/40", isOpen ? "border-[#5865F2] ring-1 ring-[#5865F2] rounded-b-none border-b-0" : "")}>
           <div className="flex items-center gap-2.5 truncate">
             {Icon && <Icon className={cn("w-4 h-4 shrink-0 transition-colors", isOpen || selectedOption ? "text-gray-300" : "text-gray-500")} />}
-            <span className={cn("truncate font-medium", !selectedOption && "text-gray-500")}>
-              {selectedOption ? selectedOption.label : placeholder}
-            </span>
+            <span className={cn("truncate font-medium", !selectedOption && "text-gray-500")}>{selectedOption ? selectedOption.label : placeholder}</span>
           </div>
           <ChevronDown className={cn("w-4 h-4 text-gray-500 transition-transform duration-200", isOpen && "rotate-180 text-white")} />
         </div>
-
         {isOpen && (
           <div className="absolute z-50 w-full bg-[#2b2d31] border border-[#5865F2] border-t-0 rounded-b-md shadow-2xl max-h-60 overflow-y-auto custom-scrollbar animate-in fade-in slide-in-from-top-1 duration-100">
             <div className="p-1 space-y-0.5">
-              {options.length === 0 ? (
-                <div className="px-3 py-2 text-sm text-gray-500 text-center italic">Keine Optionen verfügbar</div>
-              ) : (
-                options.map((opt) => {
+              {options.length === 0 ? <div className="px-3 py-2 text-sm text-gray-500 text-center italic">Keine Optionen verfügbar</div> : options.map((opt) => {
                   const isSelected = value === opt.value;
                   return (
-                    <div
-                      key={opt.value}
-                      onClick={() => { onChange(opt.value); setIsOpen(false); }}
-                      className={cn(
-                        "px-3 py-2 text-sm rounded cursor-pointer flex items-center gap-2 transition-colors group",
-                        isSelected ? "bg-[#404249] text-white" : "text-gray-300 hover:bg-[#35373c] hover:text-white"
-                      )}
-                    >
+                    <div key={opt.value} onClick={() => { onChange(opt.value); setIsOpen(false); }} className={cn("px-3 py-2 text-sm rounded cursor-pointer flex items-center gap-2 transition-colors group", isSelected ? "bg-[#404249] text-white" : "text-gray-300 hover:bg-[#35373c] hover:text-white")}>
                       {Icon && <Icon className={cn("w-4 h-4 shrink-0", isSelected ? "text-white" : "text-gray-500 group-hover:text-gray-300")} />}
                       <span className={cn("truncate flex-1", isSelected && "font-medium")}>{opt.label}</span>
-                      {isSelected && (
-                         <div className="flex items-center justify-center w-5 h-5 rounded-full bg-[#5865F2] shrink-0">
-                            <Check className="w-3 h-3 text-white stroke-[3]" />
-                         </div>
-                      )}
+                      {isSelected && <div className="flex items-center justify-center w-5 h-5 rounded-full bg-[#5865F2] shrink-0"><Check className="w-3 h-3 text-white stroke-[3]" /></div>}
                     </div>
                   );
-                })
-              )}
+              })}
             </div>
           </div>
         )}
@@ -168,11 +134,10 @@ function defaultTicketResponse() {
   };
 }
 
-// DEFAULT für das Panel im Channel
 function defaultPanelEmbed() {
     return {
-        title: "Create a Ticket",
-        description: "Click the button below to contact support.",
+        title: "Support Ticket",
+        description: "Click below.",
         color: "#5865F2",
         fields: [],
         footer: { text: "Ticket System" },
@@ -227,7 +192,7 @@ export default function TicketsPage() {
         if (!sRes.ok) throw new Error(`Fehler (${sRes.status})`);
         
         const settingsData = await sRes.json();
-        // Default Panel Daten setzen falls nicht vorhanden
+        // WICHTIG: Fallback, damit die Seite nicht crasht, wenn Daten leer sind
         if(!settingsData.panelEmbed) settingsData.panelEmbed = defaultPanelEmbed();
         setSettings(settingsData);
 
@@ -262,22 +227,40 @@ export default function TicketsPage() {
   async function sendReply() { if (!selectedTicketId || !replyText.trim()) return; try { await fetch(`/api/tickets/${selectedTicketId}`, { method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify({ content: replyText }) }); setReplyText(""); fetchMessages(selectedTicketId); } catch {} }
   
   async function saveSettings(e) { 
-      e?.preventDefault(); 
-      setSavingSettings(true); 
-      try { 
-          const r = await fetch(`/api/settings/${guildId}`, { 
-              method: "PUT", 
-              headers: {"Content-Type": "application/json"}, 
-              body: JSON.stringify(settings) 
-          }); 
-          if(r.ok) { 
-              setSettings(await r.json()); 
-              flashFormMsg("Settings Saved ✅"); 
-          } 
-      } finally { 
-          setSavingSettings(false); 
-      } 
-  }
+    e?.preventDefault(); 
+    setSavingSettings(true); 
+    try { 
+        // Debugging: Sehen was gesendet wird
+        console.log("Sending Settings:", settings);
+
+        const r = await fetch(`/api/settings/${guildId}`, { 
+            method: "POST", 
+            headers: {"Content-Type": "application/json"}, 
+            body: JSON.stringify(settings) 
+        }); 
+        
+        if(r.ok) { 
+            const newData = await r.json();
+            console.log("Received Saved Data:", newData);
+            
+            // Wichtig: Wenn DB panelEmbed leer zurückgibt, behalte das lokale (Fallback)
+            if(!newData.panelEmbed || Object.keys(newData.panelEmbed).length === 0) {
+                newData.panelEmbed = settings.panelEmbed;
+            }
+            
+            setSettings(newData); 
+            flashFormMsg("Settings Saved ✅"); 
+        } else {
+            console.error("API Error:", r.status, r.statusText);
+            flashFormMsg(`Fehler: ${r.status} ❌`);
+        }
+    } catch(e) {
+        console.error("Save failed:", e);
+        flashFormMsg("Netzwerk Fehler ❌");
+    } finally { 
+        setSavingSettings(false); 
+    } 
+}
   
   async function saveTicketForm() { setFormSaving(true); try { const pl = { mode: "custom", version: 1, botCode: buildTicketBotCode(modal), builderData: { modal, response } }; const r = await fetch(`/api/guilds/${guildId}/tickets/form`, { method: "PUT", headers: {"Content-Type": "application/json"}, body: JSON.stringify(pl) }); if(r.ok) flashFormMsg("Form Saved ✅"); } finally { setFormSaving(false); } }
   
@@ -286,7 +269,6 @@ export default function TicketsPage() {
       try { 
           const r = await fetch(`/api/guilds/${guildId}/tickets/form/reset`, { method: "POST" }); 
           if(r.ok) { 
-              // FIX: Alles zurücksetzen (Modal, Response, Panel, Buttons)
               setModal(defaultTicketModal()); 
               setResponse(defaultTicketResponse()); 
               setSettings(s => ({ 
@@ -588,22 +570,22 @@ export default function TicketsPage() {
 
                     {editorTab === "panel" && (
                         <div className="bg-[#313338] rounded-xl p-4 transition-all duration-300">
-                             {/* HIER WAR DER FEHLER: KEIN WRAPPER, EmbedPreview IST der Wrapper */}
                              <EmbedPreview 
                                 embed={settings?.panelEmbed} 
                                 content="" 
                                 botName="Ticket System" 
                                 botIconUrl={guildIconUrl} 
                              >
-                                 {/* Buttons sind jetzt Children */}
-                                 {settings?.panelButtonText ? (
-                                     <DiscordButton label={settings.panelButtonText} emoji="📩" style={settings.panelButtonStyle} />
-                                 ) : (
-                                     <>
-                                        <DiscordButton label="Deutsch" emoji="🇩🇪" style={settings.panelButtonStyle} />
-                                        <DiscordButton label="English" emoji="🇺🇸" style={settings.panelButtonStyle} />
-                                     </>
-                                 )}
+                                 <div className="flex gap-2 flex-wrap mt-2">
+                                    {settings?.panelButtonText ? (
+                                        <DiscordButton label={settings.panelButtonText} emoji="📩" style={settings.panelButtonStyle} />
+                                    ) : (
+                                        <>
+                                            <DiscordButton label="Deutsch" emoji="🇩🇪" style={settings.panelButtonStyle} />
+                                            <DiscordButton label="English" emoji="🇺🇸" style={settings.panelButtonStyle} />
+                                        </>
+                                    )}
+                                 </div>
                              </EmbedPreview>
                         </div>
                     )}
