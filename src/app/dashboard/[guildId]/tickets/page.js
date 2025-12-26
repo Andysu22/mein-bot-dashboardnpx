@@ -588,36 +588,23 @@ export default function TicketsPage() {
 
                     {editorTab === "panel" && (
                         <div className="bg-[#313338] rounded-xl p-4 transition-all duration-300">
-                             <div className="flex gap-4 group items-start">
-                                <div className="shrink-0 cursor-pointer mt-0.5">
-                                   <img src={guildIconUrl} alt="Bot Avatar" className="w-10 h-10 rounded-full hover:opacity-80 transition shadow-sm bg-[#1e1f22]" />
-                                </div>
-                                <div className="flex flex-col text-left w-full min-w-0">
-                                  <div className="flex items-center gap-2 mb-0.5">
-                                    <span className="text-white font-medium hover:underline cursor-pointer">Ticket System</span>
-                                    <span className="bg-[#5865F2] text-[10px] text-white px-1 rounded-[3px] flex items-center h-[15px] leading-none mt-[1px]">BOT</span>
-                                    <span className="text-gray-400 text-xs ml-1">Today at {new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
-                                  </div>
-                                  
-                                  {/* HIER WAR DER FEHLER: KEIN WRAPPER MEHR, BUTTONS ALS CHILDREN */}
-                                  <EmbedPreview 
-                                    embed={settings?.panelEmbed} 
-                                    content="" 
-                                    botName="" 
-                                    botIconUrl=""
-                                  >
-                                      {/* Buttons sind jetzt Children und werden von EmbedPreview unterhalb des Embeds gerendert */}
-                                      {settings?.panelButtonText ? (
-                                         <DiscordButton label={settings.panelButtonText} emoji="📩" style={settings.panelButtonStyle} />
-                                      ) : (
-                                         <>
-                                            <DiscordButton label="Deutsch" emoji="🇩🇪" style={settings.panelButtonStyle} />
-                                            <DiscordButton label="English" emoji="🇺🇸" style={settings.panelButtonStyle} />
-                                         </>
-                                      )}
-                                  </EmbedPreview>
-                                </div>
-                             </div>
+                             {/* HIER WAR DER FEHLER: KEIN WRAPPER, EmbedPreview IST der Wrapper */}
+                             <EmbedPreview 
+                                embed={settings?.panelEmbed} 
+                                content="" 
+                                botName="Ticket System" 
+                                botIconUrl={guildIconUrl} 
+                             >
+                                 {/* Buttons sind jetzt Children */}
+                                 {settings?.panelButtonText ? (
+                                     <DiscordButton label={settings.panelButtonText} emoji="📩" style={settings.panelButtonStyle} />
+                                 ) : (
+                                     <>
+                                        <DiscordButton label="Deutsch" emoji="🇩🇪" style={settings.panelButtonStyle} />
+                                        <DiscordButton label="English" emoji="🇺🇸" style={settings.panelButtonStyle} />
+                                     </>
+                                 )}
+                             </EmbedPreview>
                         </div>
                     )}
 
