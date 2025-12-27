@@ -1,9 +1,9 @@
 "use client";
 
-import React, { useState } from "react";
+import React from "react";
 import { nanoid } from "nanoid";
-import { DndContext, PointerSensor, useSensor, useSensors } from "@dnd-kit/core";
-import { SortableContext, verticalListSortingStrategy, useSortable } from "@dnd-kit/sortable";
+import { DndContext, PointerSensor, useSensor, useSensors, closestCenter } from "@dnd-kit/core";
+import { SortableContext, verticalListSortingStrategy, useSortable, arrayMove } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { cn } from "@/lib/utils"; 
 import { 
@@ -14,9 +14,12 @@ import {
   User, 
   ImageIcon, 
   Type, 
-  MessageSquare,
   PanelBottom,
-  Plus
+  Plus,
+  Clock,
+  Palette,
+  Layout,
+  Link as LinkIcon
 } from "lucide-react";
 
 // --- Helpers ---
@@ -25,8 +28,8 @@ const MAX_FIELDS = 25;
 function defaultField() {
   return {
     id: nanoid(),
-    name: "Field title",
-    value: "Field value",
+    name: "",
+    value: "",
     inline: false,
     collapsed: false,
   };
@@ -41,123 +44,77 @@ function toHexColor(s) {
 }
 
 // --- Toggle Switch ---
-function Toggle({ label, value, onChange, size = "md" }) {
+function ToggleSwitch({ checked, onChange }) {
   return (
-    <div onClick={() => onChange(!value)} className={cn("flex items-center justify-between gap-3 cursor-pointer select-none group", size === "sm" ? "" : "rounded-lg bg-[#111214] border border-white/5 px-3 py-2 hover:border-white/10 transition-colors")}>
-      <span className={cn("text-gray-300 font-medium group-hover:text-white transition-colors", size === "sm" ? "text-xs" : "text-sm")}>{label}</span>
-      <div
-        className={cn(
-          "relative rounded-full transition-colors",
-          size === "sm" ? "h-4 w-7" : "h-5 w-9",
-          value ? "bg-[#5865F2]" : "bg-gray-700"
-        )}
-      >
-        <div
-          className={cn(
-            "absolute top-0.5 left-0.5 rounded-full bg-white transition-transform shadow-sm",
-            size === "sm" ? "h-3 w-3" : "h-4 w-4",
-            value ? (size === "sm" ? "translate-x-3" : "translate-x-4") : "translate-x-0"
-          )}
-        />
-      </div>
-    </div>
-  );
-}
-
-// --- Collapsible Section Component ---
-function CollapsibleSection({ title, icon: Icon, children, defaultOpen = false }) {
-  const [isOpen, setIsOpen] = useState(defaultOpen);
-
-  return (
-    <div className="border border-white/5 rounded-xl bg-[#1e1f22] overflow-hidden transition-all hover:border-white/10">
-      <button 
-        type="button"
-        onClick={() => setIsOpen(!isOpen)}
-        className="w-full flex items-center justify-between p-4 bg-white/[0.02] hover:bg-white/[0.05] transition-colors"
-      >
-        <div className="flex items-center gap-3">
-          {Icon && <Icon className="w-4 h-4 text-gray-400" />}
-          <span className="font-bold text-sm text-gray-200">{title}</span>
-        </div>
-        {isOpen ? <ChevronDown className="w-4 h-4 text-gray-400" /> : <ChevronRight className="w-4 h-4 text-gray-400" />}
-      </button>
-      
-      {isOpen && (
-        <div className="p-4 border-t border-white/5 space-y-4 animate-in slide-in-from-top-2 duration-200">
-          {children}
-        </div>
+    <div 
+      onClick={(e) => { e.stopPropagation(); onChange(!checked); }}
+      className={cn(
+        "w-10 h-5 rounded-full relative cursor-pointer transition-colors duration-200 ease-in-out border border-transparent",
+        checked ? "bg-[#5865F2]" : "bg-[#3f4147]"
       )}
+    >
+      <div 
+        className={cn(
+          "w-3.5 h-3.5 bg-white rounded-full absolute top-[2px] shadow-sm transition-transform duration-200 ease-in-out",
+          checked ? "translate-x-5" : "translate-x-0.5"
+        )}
+      />
     </div>
   );
 }
 
-// --- Sortable Field Component ---
-function SortableFieldRow({ field, onChange, onDelete, attributes, listeners, setNodeRef, transform, transition, isDragging }) {
-  const style = { transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.5 : 1, zIndex: isDragging ? 50 : "auto", position: "relative" };
+// --- Sortable Field Row ---
+function SortableFieldRow({ field, onChange, onDelete, listeners, attributes, setNodeRef, transform, transition, isDragging }) {
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+    position: "relative",
+    zIndex: isDragging ? 50 : "auto",
+  };
 
   return (
-    <div ref={setNodeRef} style={style} className={cn("group rounded-xl border bg-[#111214] transition-all overflow-hidden", isDragging ? "border-[#5865F2] shadow-lg scale-[1.02]" : "border-white/5 hover:border-white/10")}>
-      
-      {/* Header Row */}
-      <div className="flex items-center gap-3 p-3 bg-white/[0.02]">
-        {/* Drag Handle */}
-        <button type="button" className="touch-none p-1 text-gray-500 hover:text-gray-300 active:cursor-grabbing hover:bg-white/5 rounded transition-colors cursor-grab" {...attributes} {...listeners}>
+    <div ref={setNodeRef} style={style} className={cn("rounded-lg border bg-[#1e1f22] transition-all overflow-hidden mb-3 group", isDragging ? "border-[#5865F2] shadow-xl ring-1 ring-[#5865F2]" : "border-white/5 hover:border-white/10")}>
+      <div className="flex items-center gap-3 p-3 cursor-pointer select-none bg-[#2b2d31]/50 hover:bg-[#2b2d31]" onClick={() => onChange({ ...field, collapsed: !field.collapsed })}>
+        <button type="button" className="touch-none text-gray-500 hover:text-gray-300 cursor-grab active:cursor-grabbing p-1" {...attributes} {...listeners}>
           <GripVertical className="h-4 w-4" />
         </button>
-
-        {/* Collapse Toggle (Arrow) */}
-        <button 
-          type="button" 
-          onClick={() => onChange({ ...field, collapsed: !field.collapsed })}
-          className="p-1 text-gray-400 hover:text-white hover:bg-white/5 rounded transition-colors"
-        >
-          {field.collapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-        </button>
-
-        {/* Field Name Preview */}
-        <div className="flex-1 font-medium text-sm text-gray-200 truncate select-none cursor-pointer" onClick={() => onChange({ ...field, collapsed: !field.collapsed })}>
-          {field.name || <span className="text-gray-600 italic">Unbenanntes Feld</span>}
+        <div className="flex-1 min-w-0">
+           <div className="flex items-center gap-2">
+             <span className={cn("text-xs font-bold truncate", field.name ? "text-gray-200" : "text-gray-500 italic")}>
+                {field.name || "Unbenanntes Feld"}
+             </span>
+             {field.inline && <span className="text-[9px] uppercase font-bold bg-[#5865F2]/20 text-[#5865F2] px-1.5 py-0.5 rounded-[3px]">Inline</span>}
+           </div>
         </div>
-
-        {/* Delete Action */}
-        <button type="button" onClick={() => onDelete(field.id)} className="p-1.5 text-gray-500 hover:text-red-400 hover:bg-red-500/10 rounded transition-colors opacity-0 group-hover:opacity-100 focus:opacity-100" title="Feld löschen">
-          <Trash2 className="h-4 w-4" />
-        </button>
+        <div className="flex items-center gap-2">
+            <button type="button" onClick={(e) => { e.stopPropagation(); onDelete(field.id); }} className="p-1.5 text-gray-500 hover:text-red-400 hover:bg-red-500/10 rounded transition-colors opacity-0 group-hover:opacity-100">
+                <Trash2 className="w-4 h-4" />
+            </button>
+            <div className="text-gray-500">
+                {field.collapsed ? <ChevronRight className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+            </div>
+        </div>
       </div>
-
-      {/* Expanded Content */}
       {!field.collapsed && (
-        <div className="p-3 space-y-3 border-t border-white/5 bg-black/20">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-             <div className="space-y-1.5">
-               <label className="text-[10px] uppercase font-bold text-gray-500 tracking-wider pl-1">Name</label>
-               <input 
-                 value={field.name} 
-                 onChange={(e) => onChange({ ...field, name: e.target.value })} 
-                 className="w-full bg-[#1e1f22] border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:border-[#5865F2] outline-none transition-colors" 
-                 placeholder="Feld Titel"
-                 maxLength={256} 
-               />
-             </div>
-             <div className="space-y-1.5 flex flex-col justify-end pb-0.5">
-               <Toggle 
-                 label="Inline anzeigen" 
-                 size="sm"
-                 value={!!field.inline} 
-                 onChange={(v) => onChange({ ...field, inline: v })} 
-               />
-             </div>
-          </div>
-          <div className="space-y-1.5">
-            <label className="text-[10px] uppercase font-bold text-gray-500 tracking-wider pl-1">Wert</label>
-            <textarea 
-              value={field.value} 
-              onChange={(e) => onChange({ ...field, value: e.target.value })} 
-              className="w-full bg-[#1e1f22] border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:border-[#5865F2] outline-none transition-colors min-h-[80px] resize-y" 
-              placeholder="Feld Inhalt..."
-              maxLength={1024} 
-            />
-          </div>
+        <div className="p-4 space-y-4 border-t border-white/5">
+            <div className="grid grid-cols-1 gap-4">
+                <div className="space-y-1.5">
+                    <label className="text-[10px] uppercase font-bold text-gray-400 pl-1">Titel</label>
+                    <input value={field.name} onChange={(e) => onChange({...field, name: e.target.value})} className="w-full bg-[#111214] border border-white/10 rounded-md px-3 py-2 text-sm text-white focus:border-[#5865F2] outline-none transition-all placeholder:text-gray-600" placeholder="Feld Name..." maxLength={256} />
+                </div>
+                <div className="space-y-1.5">
+                    <label className="text-[10px] uppercase font-bold text-gray-400 pl-1">Inhalt</label>
+                    <textarea value={field.value} onChange={(e) => onChange({...field, value: e.target.value})} className="w-full bg-[#111214] border border-white/10 rounded-md px-3 py-2 text-sm text-white focus:border-[#5865F2] outline-none transition-all resize-y min-h-[80px] placeholder:text-gray-600" placeholder="Was soll hier stehen?" maxLength={1024} />
+                </div>
+            </div>
+            <div className="flex items-center justify-between pt-2 border-t border-white/5">
+                <div className="flex flex-col">
+                    <span className="text-xs font-bold text-gray-300">Inline Anzeigen</span>
+                    <span className="text-[10px] text-gray-500">Zeigt dieses Feld neben dem vorherigen an.</span>
+                </div>
+                <ToggleSwitch checked={field.inline} onChange={(v) => onChange({...field, inline: v})} />
+            </div>
         </div>
       )}
     </div>
@@ -165,202 +122,167 @@ function SortableFieldRow({ field, onChange, onDelete, attributes, listeners, se
 }
 
 function SortableField(props) {
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: props.field.id });
-  return <SortableFieldRow {...props} attributes={attributes} listeners={listeners} setNodeRef={setNodeRef} transform={transform} transition={transition} isDragging={isDragging} />;
+    const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: props.field.id });
+    return <SortableFieldRow {...props} attributes={attributes} listeners={listeners} setNodeRef={setNodeRef} transform={transform} transition={transition} isDragging={isDragging} />;
 }
 
-// --- MAIN COMPONENT ---
-export default function EmbedBuilder({ data, onChange }) {
-  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }));
-
-  const handleChange = (key, value) => {
-    onChange({ ...data, [key]: value });
-  };
-
-  const handleDeepChange = (parent, key, value) => {
-    onChange({ ...data, [parent]: { ...(data[parent] || {}), [key]: value } });
-  };
-
-  const onAddField = () => {
-    if ((data.fields || []).length >= MAX_FIELDS) return;
-    onChange({ ...data, fields: [...(data.fields || []), defaultField()] });
-  };
-
-  const onFieldChange = (updatedField) => {
-    onChange({
-      ...data,
-      fields: (data.fields || []).map((f) => (f.id === updatedField.id ? updatedField : f)),
-    });
-  };
-
-  const onDeleteField = (id) => {
-    onChange({ ...data, fields: (data.fields || []).filter((f) => f.id !== id) });
-  };
+// --- MAIN BUILDER ---
+// HIER: hiddenSections als Prop hinzugefügt (Default ist leeres Array = zeige alles)
+export default function EmbedBuilder({ data, onChange, hiddenSections = [] }) {
+  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
 
   const onDragEnd = (event) => {
     const { active, over } = event;
     if (!over || active.id === over.id) return;
-    const arr = [...(data.fields || [])];
-    const from = arr.findIndex((x) => x.id === active.id);
-    const to = arr.findIndex((x) => x.id === over.id);
-    if (from < 0 || to < 0) return;
-    const [moved] = arr.splice(from, 1);
-    arr.splice(to, 0, moved);
-    onChange({ ...data, fields: arr });
+    const oldIndex = (data.fields || []).findIndex((f) => f.id === active.id);
+    const newIndex = (data.fields || []).findIndex((f) => f.id === over.id);
+    if (oldIndex !== -1 && newIndex !== -1) {
+        onChange({ ...data, fields: arrayMove(data.fields, oldIndex, newIndex) });
+    }
   };
 
-  const isThumbnailEnabled = !!data.thumbnail_url; 
-  const toggleThumbnail = (enabled) => {
-      if (enabled) {
-          handleChange("thumbnail_url", "{user_avatar}");
-      } else {
-          handleChange("thumbnail_url", "");
-      }
+  const onAddField = () => {
+      if ((data.fields || []).length >= MAX_FIELDS) return;
+      onChange({ ...data, fields: [...(data.fields || []), defaultField()] });
   };
+
+  const onFieldChange = (f) => onChange({ ...data, fields: data.fields.map(x => x.id === f.id ? f : x) });
+  const onDeleteField = (id) => onChange({ ...data, fields: data.fields.filter(x => x.id !== id) });
 
   return (
-    <div className="space-y-4">
-      
-      {/* 1. General Info Section */}
-      <CollapsibleSection title="Allgemeine Informationen" icon={MessageSquare} defaultOpen={true}>
-        <div className="space-y-3">
-            <div className="space-y-1.5">
-                <label className="text-[10px] uppercase font-bold text-gray-500 tracking-wider pl-1">Embed Titel</label>
-                <input 
-                    value={data.title || ""} 
-                    onChange={(e) => handleChange("title", e.target.value)} 
-                    className="w-full bg-[#111214] border border-white/10 rounded-lg px-3 py-2 text-sm font-bold text-white focus:border-[#5865F2] outline-none transition-colors" 
-                    placeholder="Titel des Embeds"
-                    maxLength={256} 
-                />
-            </div>
-            <div className="space-y-1.5">
-                <label className="text-[10px] uppercase font-bold text-gray-500 tracking-wider pl-1">Beschreibung</label>
-                <textarea 
-                    value={data.description || ""} 
-                    onChange={(e) => handleChange("description", e.target.value)} 
-                    className="w-full bg-[#111214] border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:border-[#5865F2] outline-none transition-colors min-h-[100px]" 
-                    placeholder="Beschreibungstext..."
-                    maxLength={4096} 
-                />
-            </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
-                <div className="space-y-1.5">
-                    <label className="text-[10px] uppercase font-bold text-gray-500 tracking-wider pl-1">Farbe</label>
-                    <div className="flex items-center gap-2">
-                        <div className="h-9 w-10 rounded-lg border border-white/10 overflow-hidden relative cursor-pointer shadow-sm">
-                            <input 
-                                type="color" 
-                                value={toHexColor(data.color)} 
-                                onChange={(e) => handleChange("color", e.target.value)} 
-                                className="absolute -top-2 -left-2 w-[200%] h-[200%] cursor-pointer p-0 m-0 border-0" 
-                            />
-                        </div>
-                        <input 
-                            value={toHexColor(data.color)} 
-                            onChange={(e) => handleChange("color", e.target.value)} 
-                            className="flex-1 bg-[#111214] border border-white/10 rounded-lg px-3 py-2 text-sm font-mono text-white focus:border-[#5865F2] outline-none transition-colors uppercase" 
-                        />
+    <div className="space-y-8 animate-in fade-in slide-in-from-bottom-2 duration-500 max-w-4xl mx-auto">
+        
+        {/* SECTION 1: GENERAL (Always visible) */}
+        <div className="bg-[#1e1f22] rounded-xl border border-white/5 overflow-hidden">
+            <div className="bg-[#2b2d31] px-4 py-3 border-b border-white/5 flex items-center justify-between">
+                <h3 className="text-xs font-bold text-gray-300 uppercase tracking-wider flex items-center gap-2">
+                    <Layout className="w-4 h-4 text-[#5865F2]"/> Allgemein
+                </h3>
+                
+                <div className="flex items-center gap-3">
+                    <label className="text-[10px] font-bold text-gray-500 uppercase">Farbe</label>
+                    <div className="relative flex items-center gap-2 bg-[#111214] p-1 rounded-md border border-white/10">
+                        <input type="color" value={toHexColor(data.color)} onChange={(e) => onChange({...data, color: e.target.value})} className="w-6 h-6 rounded cursor-pointer border-none p-0 bg-transparent" />
+                        <input value={data.color || "#5865F2"} onChange={(e) => onChange({...data, color: e.target.value})} className="w-16 bg-transparent text-xs font-mono text-white outline-none uppercase" maxLength={7} />
                     </div>
                 </div>
-                <div className="flex items-end pb-0.5">
-                    <Toggle 
-                        label="Zeitstempel anzeigen" 
-                        value={!!data.timestamp} 
-                        onChange={(v) => handleChange("timestamp", v)} 
-                    />
+            </div>
+            <div className="p-5 grid gap-5">
+                <div className="space-y-1.5">
+                    <label className="text-[10px] uppercase font-bold text-gray-400 pl-1 flex items-center gap-1.5"><Type className="w-3 h-3"/> Embed Titel</label>
+                    <input value={data.title || ""} onChange={(e) => onChange({...data, title: e.target.value})} className="w-full bg-[#111214] border border-white/10 rounded-lg px-4 py-2.5 text-sm font-bold text-white focus:border-[#5865F2] outline-none transition-all placeholder:text-gray-600" placeholder="Titel des Embeds" maxLength={256} />
+                </div>
+                <div className="space-y-1.5">
+                    <label className="text-[10px] uppercase font-bold text-gray-400 pl-1 flex items-center gap-1.5"><Layout className="w-3 h-3"/> Beschreibung</label>
+                    <textarea value={data.description || ""} onChange={(e) => onChange({...data, description: e.target.value})} className="w-full bg-[#111214] border border-white/10 rounded-lg px-4 py-3 text-sm text-gray-300 focus:border-[#5865F2] outline-none transition-all resize-y min-h-[100px] placeholder:text-gray-600 leading-relaxed" placeholder="Schreibe hier den Hauptinhalt..." maxLength={4096} />
                 </div>
             </div>
         </div>
-      </CollapsibleSection>
 
-      {/* 2. Author Section */}
-      <CollapsibleSection title="Autor" icon={User}>
-        <div className="grid grid-cols-1 gap-3">
-            <div className="space-y-1.5">
-                <label className="text-[10px] uppercase font-bold text-gray-500 tracking-wider pl-1">Name</label>
-                <input value={data.author?.name || ""} onChange={(e) => handleDeepChange("author", "name", e.target.value)} className="w-full bg-[#111214] border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:border-[#5865F2] outline-none transition-colors" placeholder="Name des Autors" maxLength={256} />
-            </div>
-            <div className="space-y-1.5">
-                <label className="text-[10px] uppercase font-bold text-gray-500 tracking-wider pl-1">Icon URL</label>
-                <input value={data.author?.icon_url || ""} onChange={(e) => handleDeepChange("author", "icon_url", e.target.value)} className="w-full bg-[#111214] border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:border-[#5865F2] outline-none transition-colors" placeholder="https://..." maxLength={2048} />
-            </div>
-        </div>
-      </CollapsibleSection>
-
-      {/* 3. Media Section */}
-      <CollapsibleSection title="Bilder & Medien" icon={ImageIcon}>
-         <div className="space-y-4">
-            <div className="p-3 rounded-lg bg-[#111214] border border-white/5">
-                <Toggle 
-                    label="User Thumbnail anzeigen (oben rechts)" 
-                    value={isThumbnailEnabled} 
-                    onChange={toggleThumbnail} 
-                />
-                <p className="text-[10px] text-gray-500 mt-2 px-1">Zeigt das Profilbild des Users an, der das Ticket öffnet.</p>
-            </div>
-            <div className="space-y-1.5">
-                <label className="text-[10px] uppercase font-bold text-gray-500 tracking-wider pl-1">Großes Bild URL (Unten)</label>
-                <input 
-                    value={data.image_url || ""} 
-                    onChange={(e) => handleChange("image_url", e.target.value)} 
-                    className="w-full bg-[#111214] border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:border-[#5865F2] outline-none transition-colors" 
-                    placeholder="https://..." 
-                    maxLength={2048} 
-                />
-            </div>
-         </div>
-      </CollapsibleSection>
-
-      {/* 4. Footer Section */}
-      <CollapsibleSection title="Footer" icon={PanelBottom}>
-        <div className="grid grid-cols-1 gap-3">
-            <div className="space-y-1.5">
-                <label className="text-[10px] uppercase font-bold text-gray-500 tracking-wider pl-1">Text</label>
-                <input value={data.footer?.text || ""} onChange={(e) => handleDeepChange("footer", "text", e.target.value)} className="w-full bg-[#111214] border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:border-[#5865F2] outline-none transition-colors" placeholder="Footer Text" maxLength={2048} />
-            </div>
-            <div className="space-y-1.5">
-                <label className="text-[10px] uppercase font-bold text-gray-500 tracking-wider pl-1">Icon URL</label>
-                <input value={data.footer?.icon_url || ""} onChange={(e) => handleDeepChange("footer", "icon_url", e.target.value)} className="w-full bg-[#111214] border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:border-[#5865F2] outline-none transition-colors" placeholder="https://..." maxLength={2048} />
-            </div>
-        </div>
-      </CollapsibleSection>
-
-      {/* 5. Fields Section */}
-      <div className="pt-2">
-        <div className="flex items-center justify-between mb-3 px-1">
-            <div className="flex items-center gap-2">
-                <Type className="w-4 h-4 text-[#5865F2]"/>
-                <span className="text-white font-bold text-sm">Felder</span>
-                <span className="text-xs text-gray-500 bg-white/5 px-1.5 py-0.5 rounded ml-1">{ (data.fields || []).length }/{MAX_FIELDS}</span>
-            </div>
-            <button 
-                type="button" 
-                onClick={onAddField} 
-                disabled={(data.fields || []).length >= MAX_FIELDS}
-                className={cn("px-3 py-1.5 rounded-lg bg-[#5865F2] hover:bg-[#4752c4] text-xs font-bold text-white transition flex items-center gap-1.5 shadow-sm", (data.fields || []).length >= MAX_FIELDS && "opacity-50 cursor-not-allowed")}
-            >
-                <Plus className="w-3.5 h-3.5"/> Feld hinzufügen
-            </button>
-        </div>
-        
-        <DndContext sensors={sensors} onDragEnd={onDragEnd}>
-            <SortableContext items={(data.fields || []).map((f) => f.id)} strategy={verticalListSortingStrategy}>
-            <div className="space-y-2">
-                {(data.fields || []).map((field) => (
-                <SortableField key={field.id} field={field} onChange={onFieldChange} onDelete={onDeleteField} />
-                ))}
-            </div>
-            </SortableContext>
-        </DndContext>
-        
-        {(data.fields || []).length === 0 && (
-            <div className="flex flex-col items-center justify-center py-8 border border-dashed border-white/10 rounded-xl bg-white/[0.01]">
-                <Type className="w-8 h-8 text-gray-600 mb-2 opacity-50"/>
-                <div className="text-xs text-gray-500">Keine Felder hinzugefügt.</div>
+        {/* SECTION 2: AUTHOR (Conditional) */}
+        {!hiddenSections.includes('author') && (
+            <div className="bg-[#1e1f22] rounded-xl border border-white/5 overflow-hidden">
+                <div className="bg-[#2b2d31] px-4 py-3 border-b border-white/5">
+                    <h3 className="text-xs font-bold text-gray-300 uppercase tracking-wider flex items-center gap-2">
+                        <User className="w-4 h-4 text-orange-400"/> Autor (Oben)
+                    </h3>
+                </div>
+                <div className="p-5 grid grid-cols-1 md:grid-cols-2 gap-5">
+                    <div className="space-y-1.5">
+                        <label className="text-[10px] uppercase font-bold text-gray-400 pl-1">Autor Name</label>
+                        <input value={data.author?.name || ""} onChange={(e) => onChange({...data, author: {...data.author, name: e.target.value}})} className="w-full bg-[#111214] border border-white/10 rounded-lg px-3 py-2 text-xs font-medium text-white focus:border-[#5865F2] outline-none" placeholder="Name..." maxLength={256} />
+                    </div>
+                    <div className="space-y-1.5">
+                        <label className="text-[10px] uppercase font-bold text-gray-400 pl-1 flex items-center gap-1"><LinkIcon className="w-3 h-3"/> Icon URL</label>
+                        <input value={data.author?.icon_url || ""} onChange={(e) => onChange({...data, author: {...data.author, icon_url: e.target.value}})} className="w-full bg-[#111214] border border-white/10 rounded-lg px-3 py-2 text-xs text-gray-400 focus:border-[#5865F2] outline-none font-mono" placeholder="https://..." />
+                    </div>
+                </div>
             </div>
         )}
-      </div>
+
+        {/* SECTION 3: IMAGES (Conditional) */}
+        {!hiddenSections.includes('images') && (
+            <div className="bg-[#1e1f22] rounded-xl border border-white/5 overflow-hidden">
+                <div className="bg-[#2b2d31] px-4 py-3 border-b border-white/5">
+                    <h3 className="text-xs font-bold text-gray-300 uppercase tracking-wider flex items-center gap-2">
+                        <ImageIcon className="w-4 h-4 text-green-400"/> Bilder
+                    </h3>
+                </div>
+                <div className="p-5 grid grid-cols-1 md:grid-cols-2 gap-5">
+                    <div className="space-y-1.5">
+                        <label className="text-[10px] uppercase font-bold text-gray-400 pl-1">Thumbnail (Klein rechts)</label>
+                        <input value={data.thumbnail_url || ""} onChange={(e) => onChange({...data, thumbnail_url: e.target.value})} className="w-full bg-[#111214] border border-white/10 rounded-lg px-3 py-2 text-xs text-gray-400 focus:border-[#5865F2] outline-none font-mono" placeholder="https://..." />
+                    </div>
+                    <div className="space-y-1.5">
+                        <label className="text-[10px] uppercase font-bold text-gray-400 pl-1">Hauptbild (Groß unten)</label>
+                        <input value={data.image_url || ""} onChange={(e) => onChange({...data, image_url: e.target.value})} className="w-full bg-[#111214] border border-white/10 rounded-lg px-3 py-2 text-xs text-gray-400 focus:border-[#5865F2] outline-none font-mono" placeholder="https://..." />
+                    </div>
+                </div>
+            </div>
+        )}
+
+        {/* SECTION 4: FIELDS (Conditional) */}
+        {!hiddenSections.includes('fields') && (
+            <div>
+                <div className="flex items-center justify-between mb-4 px-1">
+                    <h3 className="text-sm font-bold text-white flex items-center gap-2">
+                        <Layout className="w-4 h-4 text-blue-400"/> Felder
+                        <span className="text-[10px] bg-white/10 text-gray-400 px-2 py-0.5 rounded-full">{(data.fields || []).length}/{MAX_FIELDS}</span>
+                    </h3>
+                    <button type="button" onClick={onAddField} disabled={(data.fields || []).length >= MAX_FIELDS} className={cn("px-3 py-1.5 rounded-md bg-[#5865F2] hover:bg-[#4752c4] text-xs font-bold text-white transition flex items-center gap-1.5 shadow-sm", (data.fields || []).length >= MAX_FIELDS && "opacity-50 cursor-not-allowed")}>
+                        <Plus className="w-3.5 h-3.5"/> Feld hinzufügen
+                    </button>
+                </div>
+                <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
+                    <SortableContext items={(data.fields || []).map((f) => f.id)} strategy={verticalListSortingStrategy}>
+                    <div className="flex flex-col">
+                        {(data.fields || []).map((field) => (
+                            <SortableField key={field.id} field={field} onChange={onFieldChange} onDelete={onDeleteField} />
+                        ))}
+                    </div>
+                    </SortableContext>
+                </DndContext>
+                {(data.fields || []).length === 0 && (
+                    <div className="flex flex-col items-center justify-center py-10 border-2 border-dashed border-white/5 rounded-xl bg-white/[0.01]">
+                        <span className="text-xs text-gray-500">Keine Felder hinzugefügt.</span>
+                    </div>
+                )}
+            </div>
+        )}
+
+        {/* SECTION 5: FOOTER (Conditional) */}
+        {!hiddenSections.includes('footer') && (
+            <div className="bg-[#1e1f22] rounded-xl border border-white/5 overflow-hidden">
+                <div className="bg-[#2b2d31] px-4 py-3 border-b border-white/5">
+                    <h3 className="text-xs font-bold text-gray-300 uppercase tracking-wider flex items-center gap-2">
+                        <PanelBottom className="w-4 h-4 text-purple-400"/> Footer & Zeit
+                    </h3>
+                </div>
+                <div className="p-5 space-y-5">
+                    <div className="grid grid-cols-1 md:grid-cols-[1fr_200px] gap-5">
+                        <div className="space-y-1.5">
+                            <label className="text-[10px] uppercase font-bold text-gray-400 pl-1">Footer Text</label>
+                            <input value={data.footer?.text || ""} onChange={(e) => onChange({...data, footer: {...data.footer, text: e.target.value}})} className="w-full bg-[#111214] border border-white/10 rounded-lg px-3 py-2 text-xs font-medium text-white focus:border-[#5865F2] outline-none" placeholder="Kleingedrucktes..." maxLength={2048} />
+                        </div>
+                        <div className="space-y-1.5">
+                            <label className="text-[10px] uppercase font-bold text-gray-400 pl-1 flex items-center gap-1"><LinkIcon className="w-3 h-3"/> Footer Icon</label>
+                            <input value={data.footer?.icon_url || ""} onChange={(e) => onChange({...data, footer: {...data.footer, icon_url: e.target.value}})} className="w-full bg-[#111214] border border-white/10 rounded-lg px-3 py-2 text-xs text-gray-400 focus:border-[#5865F2] outline-none font-mono" placeholder="https://..." />
+                        </div>
+                    </div>
+                    <div className="flex items-center justify-between bg-[#111214] p-3 rounded-lg border border-white/5">
+                        <div className="flex items-center gap-3">
+                            <div className="p-2 bg-[#1e1f22] rounded-md text-gray-400"><Clock className="w-4 h-4" /></div>
+                            <div className="flex flex-col">
+                                <span className="text-xs font-bold text-gray-200 uppercase">Zeitstempel</span>
+                                <span className="text-[10px] text-gray-500">Zeigt das aktuelle Datum unten im Footer an.</span>
+                            </div>
+                        </div>
+                        <ToggleSwitch checked={!!data.timestamp} onChange={(v) => onChange({ ...data, timestamp: v })} />
+                    </div>
+                </div>
+            </div>
+        )}
+
     </div>
   );
 }

@@ -3,31 +3,33 @@ import mongoose from "mongoose";
 const schema = new mongoose.Schema({
   guildId: { type: String, required: true, unique: true },
 
-  // --- Basis ---
+  // --- Basis Einstellungen ---
   ticketsEnabled: { type: Boolean, default: true },
   ticketLanguage: { type: String, default: "en" },
   botNickname: { type: String, default: null },
   
+  // --- Channel & Rollen IDs ---
   logChannelId: { type: String, default: null },
   supportRoleId: { type: String, default: null },
   ticketCategoryId: { type: String, default: null },
   adminRoles: [String],
 
-  // --- PANEL (Der kritische Teil) ---
+  // --- PANEL EINSTELLUNGEN ---
   panelChannelId: { type: String, default: null },
   panelMessageId: { type: String, default: null },
 
   panelButtonText: { type: String, default: "Ticket erstellen" },
   panelButtonStyle: { type: String, default: "Primary" },
   
-  // FIX: 'Mixed' sorgt dafür, dass Mongoose dieses Objekt NICHT filtert
+  // WICHTIG: Hier ist das Bild nun Standard!
   panelEmbed: { 
     type: mongoose.Schema.Types.Mixed, 
     default: {
       title: "Support Ticket",
       description: "Klicke auf den Button, um ein Ticket zu öffnen.",
       color: "#5865F2",
-      footer: { text: "Support System" }
+      footer: { text: "Support System" },
+      image_url: "https://dummyimage.com/600x200/2b2b2b/ffffff&text=Support" // DEIN BILD
     }
   },
 
@@ -44,6 +46,7 @@ const schema = new mongoose.Schema({
 
   // --- Andere Module ---
   deeplApiKey: { type: String, default: null },
+  
   tempVcEnabled: { type: Boolean, default: false },
   creatorChannelId: { type: String, default: null },
   tempCategoryChannelId: { type: String, default: null },
@@ -57,9 +60,9 @@ const schema = new mongoose.Schema({
   appDeclineCooldownDays: { type: Number, default: 7 },
   
   enabledCommands: { type: [String], default: ["help", "ping"] },
-}, { minimize: false }); // WICHTIG: minimize: false verhindert, dass leere Objekte gelöscht werden
+}, { minimize: false });
 
-// Trick: Lösche das Modell aus dem Cache, falls es existiert (hilft im Dev Mode)
+// Cache-Fix für Hot-Reloading
 if (mongoose.models && mongoose.models.GuildSettings) {
     delete mongoose.models.GuildSettings;
 }

@@ -84,7 +84,9 @@ function PreviewSelect({ label, description, required, placeholder, options, val
   return (
     <div className="space-y-1">
       <div className="text-xs font-semibold text-[#F2F3F5] flex items-center gap-1">{label}{required && <span className="text-[#ED4245]">*</span>}</div>
+      {/* HIER WURDE DESCRIPTION EINGEFÜGT */}
       {description && <div className="text-xs text-[#B5BAC1]">{description}</div>}
+      
       <button ref={anchorRef} type="button" onClick={() => setOpen((v) => !v)} className={cn("w-full h-10 flex items-center justify-between gap-2 px-3 rounded-[6px] bg-[#17181b] text-sm text-[#DBDEE1] ring-1 ring-[#3b3d44] outline-none cursor-pointer", open ? "ring-2 ring-[#5865F2]" : "")}>
         <div className="flex items-center gap-2 min-w-0">
           {selected?.emoji && <span className="text-base">{selected.emoji}</span>}
@@ -134,6 +136,8 @@ export default function ModalPreview({ modal, guildIconUrl }) {
   return (
     <div className="flex items-center justify-center">
       <div className="w-full max-w-md rounded-xl bg-[#2B2D31] ring-1 ring-white/10 shadow-2xl">
+        
+        {/* Header */}
         <div className="flex items-center justify-between px-5 py-4">
           <div className="flex items-center gap-2 min-w-0">
             {guildIconUrl && <img src={guildIconUrl} alt="" className="h-6 w-6 rounded-full object-cover" />}
@@ -142,8 +146,8 @@ export default function ModalPreview({ modal, guildIconUrl }) {
           <button className="h-8 w-8 inline-flex items-center justify-center rounded-[6px] text-[#B5BAC1] hover:text-[#DBDEE1] hover:bg-white/5 cursor-pointer">✕</button>
         </div>
         
+        {/* Warning Badge (Optional) */}
         {modal.show_warning && (
-           // ÄNDERUNG: "pb-2" zu "mb-4" ändern für korrekten Abstand
            <div className="px-5 mb-4">
              <div className="flex items-start gap-3 rounded-[6px] border border-[#F0B232]/50 bg-[#2B2D31] px-3 py-2">
                <div className="mt-0.5 text-[#F0B232]">⚠</div>
@@ -152,30 +156,65 @@ export default function ModalPreview({ modal, guildIconUrl }) {
            </div>
         )}
 
-        <div className="space-y-4 px-5 pb-4">
+        {/* Content Body */}
+        <div className="space-y-4 px-5 pb-4 max-h-[500px] overflow-y-auto custom-scrollbar">
           {(modal.components || []).map((c) => {
+            
+            // Text Display
             if (c.kind === KINDS.TEXT_DISPLAY) return <div key={c.id} className="rounded-[6px] bg-[#17181b] p-3 ring-1 ring-[#3b3d44] text-sm text-[#DBDEE1] whitespace-pre-wrap">{c.content || ""}</div>;
             
+            // Text Input
             if (c.kind === KINDS.TEXT_INPUT) {
               const v = values[c.id] ?? "";
               return (
                 <div key={c.id} className="space-y-1">
                   <div className="text-xs font-semibold text-[#F2F3F5] flex items-center gap-1">{c.label}{c.required && <span className="text-[#ED4245]">*</span>}</div>
+                  
+                  {/* HIER WURDE DESCRIPTION EINGEFÜGT */}
                   {c.description && <div className="text-xs text-[#B5BAC1]">{c.description}</div>}
+                  
                   {c.style === 2 ? (
-                    <textarea value={v} onChange={(e) => setValues(s => ({...s, [c.id]: e.target.value}))} placeholder={c.placeholder} className="w-full min-h-[96px] resize-none rounded-[6px] bg-[#17181b] px-3 py-2 text-sm text-[#DBDEE1] ring-1 ring-[#3b3d44] outline-none focus:ring-2 focus:ring-[#5865F2]" />
+                    <textarea 
+                        value={v} 
+                        onChange={(e) => setValues(s => ({...s, [c.id]: e.target.value}))} 
+                        placeholder={c.placeholder || ""} // HIER WURDE PLACEHOLDER EINGEFÜGT
+                        className="w-full min-h-[96px] resize-none rounded-[6px] bg-[#17181b] px-3 py-2 text-sm text-[#DBDEE1] ring-1 ring-[#3b3d44] outline-none focus:ring-2 focus:ring-[#5865F2]" 
+                    />
                   ) : (
-                    <input value={v} onChange={(e) => setValues(s => ({...s, [c.id]: e.target.value}))} placeholder={c.placeholder} className="w-full h-10 rounded-[6px] bg-[#17181b] px-3 py-2 text-sm text-[#DBDEE1] ring-1 ring-[#3b3d44] outline-none focus:ring-2 focus:ring-[#5865F2]" />
+                    <input 
+                        value={v} 
+                        onChange={(e) => setValues(s => ({...s, [c.id]: e.target.value}))} 
+                        placeholder={c.placeholder || ""} // HIER WURDE PLACEHOLDER EINGEFÜGT
+                        className="w-full h-10 rounded-[6px] bg-[#17181b] px-3 py-2 text-sm text-[#DBDEE1] ring-1 ring-[#3b3d44] outline-none focus:ring-2 focus:ring-[#5865F2]" 
+                    />
                   )}
                 </div>
               );
             }
+
+            // String Select (Dropdown)
             if (c.kind === KINDS.STRING_SELECT) return <PreviewSelect key={c.id} label={c.label} description={c.description} required={!!c.required} placeholder={c.placeholder || "Select…"} options={(c.options || []).map(o => ({ ...o, emoji: o.emoji || "" }))} value={values[c.id] ?? ""} onChange={(val) => setValues(s => ({...s, [c.id]: val}))} />;
+            
+            // Auto Selects (User, Role, etc.)
             if ([KINDS.USER_SELECT, KINDS.ROLE_SELECT, KINDS.CHANNEL_SELECT, KINDS.MENTIONABLE_SELECT].includes(c.kind)) return <PreviewAutoSelect key={c.id} kind={c.kind} label={c.label} description={c.description} required={!!c.required} placeholder={c.placeholder} />;
-            if (c.kind === KINDS.FILE_UPLOAD) return <div key={c.id} className="space-y-1"><div className="text-xs font-semibold text-[#F2F3F5] flex items-center gap-1">{c.label}{c.required && <span className="text-[#ED4245]">*</span>}</div>{c.description && <div className="text-xs text-[#B5BAC1]">{c.description}</div>}<div className="rounded-[6px] bg-[#17181b] ring-1 ring-[#3b3d44] p-6 text-center"><div className="text-[#DBDEE1] text-sm">Drop file here or <span className="text-[#5865F2]">browse</span></div><div className="mt-1 text-xs text-[#949BA4]">Upload a file under 10MB.</div></div></div>;
+            
+            // File Upload
+            if (c.kind === KINDS.FILE_UPLOAD) return (
+                <div key={c.id} className="space-y-1">
+                    <div className="text-xs font-semibold text-[#F2F3F5] flex items-center gap-1">{c.label}{c.required && <span className="text-[#ED4245]">*</span>}</div>
+                    {c.description && <div className="text-xs text-[#B5BAC1]">{c.description}</div>}
+                    <div className="rounded-[6px] bg-[#17181b] ring-1 ring-[#3b3d44] p-6 text-center">
+                        <div className="text-[#DBDEE1] text-sm">Drop file here or <span className="text-[#5865F2]">browse</span></div>
+                        <div className="mt-1 text-xs text-[#949BA4]">Upload a file under 10MB.</div>
+                    </div>
+                </div>
+            );
+            
             return null;
           })}
         </div>
+
+        {/* Footer Buttons */}
         <div className="flex gap-3 border-t border-white/10 px-5 py-4">
           <button className="flex-1 rounded-[6px] bg-[#313338] px-3 py-2 text-sm font-semibold hover:bg-[#3A3C43] text-[#F2F3F5]" type="button">Cancel</button>
           <button className="flex-1 rounded-[6px] bg-[#5865F2] px-3 py-2 text-sm font-semibold hover:bg-[#4f5ae6] text-white" type="button">Submit</button>

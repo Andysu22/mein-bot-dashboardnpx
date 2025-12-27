@@ -4,6 +4,15 @@ import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import connectDB from "@/lib/db";
 import { GuildSettings } from "@/models/GuildSettings";
 
+// Hier definieren wir das Standard-Panel mit deinem Bild
+const DEFAULT_PANEL = {
+    title: "🛠️ Support Center",
+    description: "**Hilfe nötig?**\nKlicke unten, um ein Ticket zu öffnen.\n\n🔒 Sichtbar: Für dich & Support",
+    color: "#5865F2",
+    footer: { text: "Bitte kurz & klar beschreiben." },
+    image_url: "https://dummyimage.com/600x200/2b2b2b/ffffff&text=Support" // <-- DEIN BILD
+};
+
 async function checkAdmin(session, guildId) {
   // 1) Try user OAuth token (requires "guilds" scope)
   try {
@@ -72,8 +81,9 @@ async function checkAdmin(session, guildId) {
 }
 
 export async function POST(req, { params }) {
-  const { id: guildId } = await params;
+  const { id: guildId } = await params; // Next.js 15 requires awaiting params
   const session = await getServerSession(authOptions);
+  
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const isAdmin = await checkAdmin(session, guildId);
@@ -81,11 +91,12 @@ export async function POST(req, { params }) {
 
   await connectDB();
 
-  // Reset ticketForm to null/default (bot uses its defaults if botCode is missing)
+  // Reset ticketForm AND panelEmbed settings
   const doc = await GuildSettings.findOneAndUpdate(
     { guildId },
     {
       $set: {
+        // Reset Form Logic (Original)
         ticketForm: {
           mode: "default",
           version: 1,
@@ -94,10 +105,14 @@ export async function POST(req, { params }) {
           submitTemplate: null,
           ticketEmbed: null,
         },
+        // Reset Panel Logic (NEU: Mit Bild)
+        panelEmbed: DEFAULT_PANEL,
+        panelButtonText: "Ticket erstellen",
+        panelButtonStyle: "Primary"
       },
     },
     { new: true, upsert: true }
   ).lean();
 
-  return NextResponse.json(doc?.ticketForm || null, { status: 200 });
+  return NextResponse.json({ success: true, settings: doc }, { status: 200 });
 }

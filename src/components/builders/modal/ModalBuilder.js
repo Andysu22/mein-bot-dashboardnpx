@@ -47,6 +47,7 @@ function defaultComponent(kind = "text_input") {
     style: 1, // 1 = Short, 2 = Paragraph
     required: true,
     placeholder: "",
+    description: "", // NEU: Standardwert
     min_length: 0,
     max_length: 1000,
     options: kind === "string_select" ? [
@@ -88,7 +89,7 @@ function AddFieldMenu({ onAdd, disabled }) {
                 )}
             >
                 <Plus className="w-4 h-4" />
-                <span>Feld hinzufügen</span>
+                <span>Hinzufügen</span>
                 <ChevronDown className={cn("w-3.5 h-3.5 ml-1 transition-transform", isOpen && "rotate-180")} />
             </button>
 
@@ -104,7 +105,7 @@ function AddFieldMenu({ onAdd, disabled }) {
                             </div>
                             <div>
                                 <div className="text-sm font-bold">Textfeld</div>
-                                <div className="text-[10px] opacity-70">Für kurze oder lange Antworten</div>
+                                <div className="text-[10px] opacity-70"></div>
                             </div>
                         </button>
                         
@@ -117,7 +118,7 @@ function AddFieldMenu({ onAdd, disabled }) {
                             </div>
                             <div>
                                 <div className="text-sm font-bold">Auswahlmenü</div>
-                                <div className="text-[10px] opacity-70">Dropdown mit Optionen</div>
+                                <div className="text-[10px] opacity-70"></div>
                             </div>
                         </button>
                     </div>
@@ -335,6 +336,7 @@ function SortableComponentRow({ component, onChange, onDelete, attributes, liste
                             placeholder="Was möchtest du wissen?"
                         />
                     </div>
+                    {/* HIER HABE ICH PLACEHOLDER & DESCRIPTION EINGEFÜGT */}
                     <div className="space-y-1.5">
                         <label className="text-[11px] uppercase font-bold text-gray-400 pl-1 flex items-center gap-1.5"><MoreHorizontal className="w-3.5 h-3.5"/> Placeholder</label>
                         <input 
@@ -342,7 +344,17 @@ function SortableComponentRow({ component, onChange, onDelete, attributes, liste
                             onChange={(e) => onChange({...component, placeholder: e.target.value})} 
                             className="w-full bg-[#111214] border border-white/10 rounded-lg px-3.5 py-2.5 text-sm text-white focus:border-[#5865F2] outline-none placeholder:text-gray-600 transition-all shadow-sm focus:ring-1 focus:ring-[#5865F2]/20"
                             maxLength={100}
-                            placeholder="Beispiel-Antwort oder Hinweis..."
+                            placeholder="Beispiel-Antwort..."
+                        />
+                    </div>
+                    <div className="space-y-1.5">
+                        <label className="text-[11px] uppercase font-bold text-gray-400 pl-1 flex items-center gap-1.5"><AlignLeft className="w-3.5 h-3.5"/> Beschreibung (Optional)</label>
+                        <input 
+                            value={component.description || ""} 
+                            onChange={(e) => onChange({...component, description: e.target.value})} 
+                            className="w-full bg-[#111214] border border-white/10 rounded-lg px-3.5 py-2.5 text-sm text-white focus:border-[#5865F2] outline-none placeholder:text-gray-600 transition-all shadow-sm focus:ring-1 focus:ring-[#5865F2]/20"
+                            maxLength={100}
+                            placeholder="Zusatzinfo unter dem Label..."
                         />
                     </div>
                 </div>
