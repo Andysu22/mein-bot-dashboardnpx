@@ -2,8 +2,6 @@
 const trackers = new Map();
 
 // ERLAUBT: 50 Anfragen pro 10 Sekunden pro IP
-// Vorher war es 10. Da deine Seite beim Laden aber schon 6 Anfragen gleichzeitig macht,
-// war das Limit viel zu niedrig. 50 ist ein guter Wert für Dashboards.
 const LIMIT = 50; 
 const WINDOW_MS = 10 * 1000;
 
@@ -18,8 +16,19 @@ function cleanup() {
 setInterval(cleanup, 2 * 60 * 1000); // Alle 2 Min aufräumen
 
 export function checkRateLimit(req) {
-    // Fallback für IP, falls Header fehlen
-    const ip = req.headers.get("x-forwarded-for") || "unknown-ip";
+    // 1. Versuche den Header zu lesen
+    let ip = req.headers.get("x-forwarded-for");
+
+    // 2. Falls mehrere IPs drinstehen (durch Proxies), nimm die erste (die echte Client-IP)
+    if (ip && ip.includes(',')) {
+        ip = ip.split(',')[0].trim();
+    }
+
+    // 3. Fallback, falls Header leer
+    if (!ip) {
+        ip = req.headers.get("x-real-ip") || "unknown-ip";
+    }
+
     const now = Date.now();
     const data = trackers.get(ip) || { count: 0, startTime: now };
 

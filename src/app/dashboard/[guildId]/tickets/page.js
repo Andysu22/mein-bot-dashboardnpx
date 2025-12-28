@@ -19,6 +19,10 @@ import {
   FolderOpen,
   Check,
   Palette,
+  BarChart3,
+  CalendarDays,
+  Inbox,
+  CheckCircle2
 } from "lucide-react";
 import { useParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
@@ -47,6 +51,21 @@ function safeStr(v) {
 function truncate(s, max) {
   const str = String(s ?? "");
   return str.length > max ? str.slice(0, max - 1) + "…" : str;
+}
+
+// --- STATS CARD COMPONENT ---
+function StatsCard({ title, value, icon: Icon, colorClass = "text-white" }) {
+  return (
+    <Card className="bg-[#111214] border-white/5 shadow-md flex items-center p-4 gap-4">
+      <div className={cn("p-3 rounded-full bg-white/5", colorClass)}>
+        <Icon className="w-6 h-6" />
+      </div>
+      <div>
+        <p className="text-sm text-gray-400 font-medium uppercase tracking-wide">{title}</p>
+        <p className="text-2xl font-black text-white">{value}</p>
+      </div>
+    </Card>
+  );
 }
 
 // --- COMPONENTS ---
@@ -332,6 +351,8 @@ export default function TicketsPage() {
   const [channels, setChannels] = useState([]);
   const [roles, setRoles] = useState([]);
   const [currentGuild, setCurrentGuild] = useState(null);
+  // NEU: Stats State
+  const [stats, setStats] = useState({ total: 0, open: 0, thisWeek: 0, closed: 0 });
 
   const [settings, setSettings] = useState(null);
   const [savingSettings, setSavingSettings] = useState(false);
@@ -370,13 +391,15 @@ export default function TicketsPage() {
     const loadData = async () => {
       setLoading(true);
       try {
-        const [sRes, tRes, cRes, rRes, tfRes, gRes] = await Promise.all([
+        const [sRes, tRes, cRes, rRes, tfRes, gRes, stRes] = await Promise.all([
           fetch(`/api/settings/${guildId}`),
           fetch(`/api/guilds/${guildId}/tickets`),
           fetch(`/api/guilds/${guildId}/channels`),
           fetch(`/api/guilds/${guildId}/roles`),
           fetch(`/api/guilds/${guildId}/tickets/form`),
           fetch(`/api/user/guilds`),
+          // NEU: Stats laden
+          fetch(`/api/guilds/${guildId}/tickets/stats`),
         ]);
 
         if (!sRes.ok) throw new Error(`Fehler (${sRes.status})`);
@@ -388,6 +411,7 @@ export default function TicketsPage() {
         if (tRes.ok) setTickets(await tRes.json());
         if (cRes.ok) setChannels(await cRes.json());
         if (rRes.ok) setRoles(await rRes.json());
+        if (stRes.ok) setStats(await stRes.json());
 
         if (gRes.ok) {
           const all = await gRes.json();
@@ -585,7 +609,7 @@ export default function TicketsPage() {
                 : "text-gray-400 hover:text-white hover:bg-white/5"
             )}
           >
-            <MessageSquare className="w-4 h-4" /> Overview
+            <BarChart3 className="w-4 h-4" /> Overview
           </button>
           <button
             onClick={() => setActiveTab("settings")}
@@ -603,108 +627,118 @@ export default function TicketsPage() {
 
       {/* OVERVIEW TAB */}
       {activeTab === "overview" && (
-        <div className="grid grid-cols-1 xl:grid-cols-[380px_1fr] gap-6 h-[calc(100vh-200px)] min-h-[600px]">
-          {/* Ticket List */}
-          <Card className="bg-[#111214] border-white/5 flex flex-col overflow-hidden shadow-xl">
-            <CardHeader className="bg-[#1a1b1e] border-b border-white/5 py-4">
-              <CardTitle className="text-white text-base flex justify-between items-center">
-                <span>Offene Tickets</span>
-                <span className="bg-[#5865F2] text-xs px-2 py-0.5 rounded-full">
-                  {openTickets.length}
-                </span>
-              </CardTitle>
-            </CardHeader>
+        <div className="space-y-6">
+          {/* STATS ROW (Neu!) */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 animate-in fade-in slide-in-from-top-4 duration-500">
+             <StatsCard title="Tickets Gesamt" value={stats.total} icon={Inbox} colorClass="text-blue-400" />
+             <StatsCard title="Aktuell Offen" value={stats.open} icon={MessageSquare} colorClass="text-green-400" />
+             <StatsCard title="Neu (7 Tage)" value={stats.thisWeek} icon={CalendarDays} colorClass="text-orange-400" />
+             <StatsCard title="Geschlossen" value={stats.closed} icon={CheckCircle2} colorClass="text-purple-400" />
+          </div>
 
-            <div className="flex-1 overflow-y-auto p-3 space-y-2">
-              {openTickets.length === 0 && (
-                <div className="text-center text-gray-500 py-10 text-sm">
-                  Keine offenen Tickets.
-                </div>
-              )}
+          <div className="grid grid-cols-1 xl:grid-cols-[380px_1fr] gap-6 h-[calc(100vh-320px)] min-h-[600px]">
+            {/* Ticket List */}
+            <Card className="bg-[#111214] border-white/5 flex flex-col overflow-hidden shadow-xl">
+              <CardHeader className="bg-[#1a1b1e] border-b border-white/5 py-4">
+                <CardTitle className="text-white text-base flex justify-between items-center">
+                  <span>Offene Tickets</span>
+                  <span className="bg-[#5865F2] text-xs px-2 py-0.5 rounded-full">
+                    {openTickets.length}
+                  </span>
+                </CardTitle>
+              </CardHeader>
 
-              {openTickets.map((t) => (
-                <button
-                  key={t._id}
-                  onClick={() => onSelectTicket(t)}
-                  className={cn(
-                    "w-full text-left p-3 rounded-xl border transition-all group",
-                    selectedTicketId === t._id
-                      ? "border-[#5865F2] bg-[#5865F2]/10"
-                      : "border-white/5 bg-black/20 hover:border-white/10 hover:bg-white/5"
-                  )}
-                >
-                  <div className="text-white font-bold truncate text-sm group-hover:text-[#5865F2] transition-colors">
-                    {t.issue || "No Subject"}
+              <div className="flex-1 overflow-y-auto p-3 space-y-2">
+                {openTickets.length === 0 && (
+                  <div className="text-center text-gray-500 py-10 text-sm">
+                    Keine offenen Tickets.
                   </div>
-                  <div className="text-xs text-gray-400 mt-1 flex justify-between">
-                    <span>{t.userTag}</span>
-                    <span className="text-gray-600">{new Date(t.createdAt).toLocaleDateString()}</span>
-                  </div>
-                </button>
-              ))}
-            </div>
-          </Card>
+                )}
 
-          {/* Chat View */}
-          <Card className="bg-[#111214] border-white/5 flex flex-col shadow-xl">
-            {!selectedTicket ? (
-              <div className="m-auto text-gray-500 flex flex-col items-center gap-3">
-                <MessageSquare className="w-12 h-12 opacity-20" />
-                <p>Wähle ein Ticket aus, um den Chat zu sehen.</p>
+                {openTickets.map((t) => (
+                  <button
+                    key={t._id}
+                    onClick={() => onSelectTicket(t)}
+                    className={cn(
+                      "w-full text-left p-3 rounded-xl border transition-all group",
+                      selectedTicketId === t._id
+                        ? "border-[#5865F2] bg-[#5865F2]/10"
+                        : "border-white/5 bg-black/20 hover:border-white/10 hover:bg-white/5"
+                    )}
+                  >
+                    <div className="text-white font-bold truncate text-sm group-hover:text-[#5865F2] transition-colors">
+                      {t.issue || "No Subject"}
+                    </div>
+                    <div className="text-xs text-gray-400 mt-1 flex justify-between">
+                      <span>{t.userTag}</span>
+                      <span className="text-gray-600">{new Date(t.createdAt).toLocaleDateString()}</span>
+                    </div>
+                  </button>
+                ))}
               </div>
-            ) : (
-              <>
-                <div className="bg-[#1a1b1e] border-b border-white/5 p-4 flex justify-between items-center">
-                  <div className="font-bold text-white flex items-center gap-2">
-                    <span className="text-[#5865F2]">#</span> {selectedTicket.issue}
-                  </div>
-                  <div className="text-xs text-gray-500">ID: {selectedTicket.channelId}</div>
-                </div>
+            </Card>
 
-                <div className="flex-1 overflow-hidden relative">
-                  <div ref={chatScrollRef} className="absolute inset-0 overflow-y-auto p-4 space-y-4">
-                    {messages.map((m, i) => (
-                      <div key={i} className="group flex gap-3 hover:bg-white/[0.02] p-2 rounded-lg -mx-2 transition-colors">
-                        <div className="w-8 h-8 rounded-full bg-[#5865F2] flex items-center justify-center text-white font-bold text-xs shrink-0">
-                          {m.authorTag?.charAt(0).toUpperCase()}
-                        </div>
-                        <div>
-                          <div className="flex items-baseline gap-2">
-                            <span className="font-bold text-gray-200 text-sm">{m.authorTag}</span>
-                            <span className="text-[10px] text-gray-500">{new Date(m.timestamp).toLocaleString()}</span>
-                          </div>
-                          <div className="text-sm text-gray-300 mt-0.5 whitespace-pre-wrap leading-relaxed">
-                            <DiscordMarkdown text={m.content} />
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
+            {/* Chat View */}
+            <Card className="bg-[#111214] border-white/5 flex flex-col shadow-xl">
+              {!selectedTicket ? (
+                <div className="m-auto text-gray-500 flex flex-col items-center gap-3">
+                  <MessageSquare className="w-12 h-12 opacity-20" />
+                  <p>Wähle ein Ticket aus, um den Chat zu sehen.</p>
                 </div>
+              ) : (
+                <>
+                  <div className="bg-[#1a1b1e] border-b border-white/5 p-4 flex justify-between items-center">
+                    <div className="font-bold text-white flex items-center gap-2">
+                      <span className="text-[#5865F2]">#</span> {selectedTicket.issue}
+                    </div>
+                    <div className="text-xs text-gray-500">ID: {selectedTicket.channelId}</div>
+                  </div>
 
-                <div className="p-4 bg-[#1a1b1e] border-t border-white/5">
-                  <div className="flex gap-2">
-                    <Input
-                      value={replyText}
-                      onChange={(e) => setReplyText(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter" && !e.shiftKey) sendReply();
-                      }}
-                      placeholder={`Antworte an ${selectedTicket.userTag}...`}
-                      className="bg-black/40 border-white/10 text-white focus-visible:ring-[#5865F2]"
-                    />
-                    <Button onClick={sendReply} className="bg-[#5865F2] hover:bg-[#4752C4]">
-                      <Send className="w-4 h-4" />
-                    </Button>
+                  <div className="flex-1 overflow-hidden relative">
+                    <div ref={chatScrollRef} className="absolute inset-0 overflow-y-auto p-4 space-y-4">
+                      {messages.map((m, i) => (
+                        <div key={i} className="group flex gap-3 hover:bg-white/[0.02] p-2 rounded-lg -mx-2 transition-colors">
+                          <div className="w-8 h-8 rounded-full bg-[#5865F2] flex items-center justify-center text-white font-bold text-xs shrink-0">
+                            {m.authorTag?.charAt(0).toUpperCase()}
+                          </div>
+                          <div>
+                            <div className="flex items-baseline gap-2">
+                              <span className="font-bold text-gray-200 text-sm">{m.authorTag}</span>
+                              <span className="text-[10px] text-gray-500">{new Date(m.timestamp).toLocaleString()}</span>
+                            </div>
+                            <div className="text-sm text-gray-300 mt-0.5 whitespace-pre-wrap leading-relaxed">
+                              <DiscordMarkdown text={m.content} />
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
                   </div>
-                </div>
-              </>
-            )}
-          </Card>
+
+                  <div className="p-4 bg-[#1a1b1e] border-t border-white/5">
+                    <div className="flex gap-2">
+                      <Input
+                        value={replyText}
+                        onChange={(e) => setReplyText(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" && !e.shiftKey) sendReply();
+                        }}
+                        placeholder={`Antworte an ${selectedTicket.userTag}...`}
+                        className="bg-black/40 border-white/10 text-white focus-visible:ring-[#5865F2]"
+                      />
+                      <Button onClick={sendReply} className="bg-[#5865F2] hover:bg-[#4752C4]">
+                        <Send className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  </div>
+                </>
+              )}
+            </Card>
+          </div>
         </div>
       )}
 
-      {/* SETTINGS TAB (fixed preview) */}
+      {/* SETTINGS TAB (unverändert) */}
       {activeTab === "settings" && (
         <div className="relative">
           {/* GRID: rechts nur Platzhalter */}

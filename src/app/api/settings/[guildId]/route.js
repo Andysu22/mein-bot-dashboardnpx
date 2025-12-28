@@ -4,32 +4,33 @@ import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import connectDB from "@/lib/db";
 import { GuildSettings } from "@/models/GuildSettings";
 import { z } from "zod";
-// NEU: Rate Limit Import
 import { checkRateLimit } from "@/lib/rateLimit";
 
 // ------------------------------------------------------------------
-// 1. Sicheres Schema für Discord Embeds (Unverändert)
+// CACHE FÜR ADMIN RECHTE (Neu)
+// ------------------------------------------------------------------
+const adminCache = new Map(); // Speichert: "userId-guildId" -> { isAdmin: true/false, timestamp: 12345 }
+const CACHE_TTL = 60 * 1000;  // 60 Sekunden Cache-Dauer
+
+// ------------------------------------------------------------------
+// Validierungs-Schemas (Unverändert)
 // ------------------------------------------------------------------
 const embedSchema = z.object({
   title: z.string().max(256).optional().nullable(),
   description: z.string().max(4096).optional().nullable(),
   color: z.union([z.string(), z.number()]).optional().nullable(),
-  
   author: z.object({
     name: z.string().max(256).optional().nullable(),
     icon_url: z.string().url().optional().nullable().or(z.literal("")),
     url: z.string().url().optional().nullable().or(z.literal("")),
   }).optional().nullable(),
-  
   footer: z.object({
     text: z.string().max(2048).optional().nullable(),
     icon_url: z.string().url().optional().nullable().or(z.literal("")),
   }).optional().nullable(),
-  
   image_url: z.string().url().optional().nullable().or(z.literal("")),
   thumbnail_url: z.string().url().optional().nullable().or(z.literal("")),
   timestamp: z.boolean().optional().nullable(),
-  
   fields: z.array(
     z.object({
       name: z.string().min(1).max(256),
@@ -39,9 +40,6 @@ const embedSchema = z.object({
   ).max(25).optional().nullable(),
 });
 
-// ------------------------------------------------------------------
-// 2. Settings Schema (Unverändert)
-// ------------------------------------------------------------------
 const settingsSchema = z.object({
   ticketsEnabled: z.boolean().optional(),
   logChannelId: z.string().nullable().optional(),
@@ -58,7 +56,7 @@ const settingsSchema = z.object({
 }).passthrough();
 
 // ------------------------------------------------------------------
-// Helper Funktionen (Unverändert)
+// Helper Funktionen
 // ------------------------------------------------------------------
 async function updateBotNickname(guildId, nickname) {
   const botToken = process.env.DISCORD_TOKEN;
@@ -72,39 +70,77 @@ async function updateBotNickname(guildId, nickname) {
   } catch (e) { console.error("Nickname update failed", e); }
 }
 
+// OPTIMIERTE CHECK-ADMIN FUNKTION MIT CACHE
 async function checkAdmin(accessToken, userId, guildId) {
+  if (!guildId || !userId) return false;
+
+  // 1. Cache prüfen
+  const cacheKey = `${userId}-${guildId}`;
+  const cached = adminCache.get(cacheKey);
+  const now = Date.now();
+
+  if (cached && (now - cached.timestamp < CACHE_TTL)) {
+    // Wenn Cache existiert und jünger als 60sek ist -> nimm Cache
+    return cached.isAdmin;
+  }
+
+  let isAdmin = false;
+
   try {
-    if (!guildId) return false;
+    // 2. Echter Check (Discord API)
     
-    // Owner Check via Bot Token
+    // A) Owner Check via Bot Token
     const botToken = process.env.DISCORD_TOKEN;
-    if (botToken && userId) {
+    if (botToken) {
       const gRes = await fetch(`https://discord.com/api/v10/guilds/${guildId}`, { headers: { Authorization: `Bot ${botToken}` } });
       if (gRes.ok) {
         const g = await gRes.json();
-        if (g?.owner_id && String(g.owner_id) === String(userId)) return true;
+        if (g?.owner_id && String(g.owner_id) === String(userId)) {
+           isAdmin = true;
+        }
       }
     }
     
-    // Permissions Check via User Token
-    if (!accessToken) return false;
-    const res = await fetch("https://discord.com/api/v10/users/@me/guilds", { headers: { Authorization: `Bearer ${accessToken}` } });
-    if (!res.ok) return false;
-    const guilds = await res.json();
-    const guild = Array.isArray(guilds) ? guilds.find((x) => x.id === guildId) : null;
-    if (!guild) return false;
-    if (guild.owner === true) return true;
-    
-    let p; try { p = BigInt(guild.permissions); } catch { return false; }
-    return (p & BigInt(0x8)) === BigInt(0x8) || (p & BigInt(0x20)) === BigInt(0x20);
-  } catch { return false; }
+    // B) Permissions Check via User Token (nur wenn A nicht schon true ergab)
+    if (!isAdmin && accessToken) {
+      const res = await fetch("https://discord.com/api/v10/users/@me/guilds", { headers: { Authorization: `Bearer ${accessToken}` } });
+      if (res.ok) {
+        const guilds = await res.json();
+        const guild = Array.isArray(guilds) ? guilds.find((x) => x.id === guildId) : null;
+        
+        if (guild) {
+          if (guild.owner === true) {
+             isAdmin = true;
+          } else {
+             let p; 
+             try { p = BigInt(guild.permissions); } catch { p = BigInt(0); }
+             // Check ADMINISTRATOR (0x8) or MANAGE_GUILD (0x20)
+             if ((p & BigInt(0x8)) === BigInt(0x8) || (p & BigInt(0x20)) === BigInt(0x20)) {
+                isAdmin = true;
+             }
+          }
+        }
+      }
+    }
+  } catch (err) {
+    console.error("Admin Check Error:", err);
+    // Im Fehlerfall lieber 'false' zurückgeben als unsicher zu sein
+    isAdmin = false;
+  }
+
+  // 3. Ergebnis cachen
+  adminCache.set(cacheKey, { isAdmin, timestamp: now });
+  
+  // Kleines Cleanup: Wenn Cache zu groß wird (z.B. > 1000 Einträge), leeren (einfachste Garbage Collection)
+  if (adminCache.size > 1000) adminCache.clear();
+
+  return isAdmin;
 }
 
 // ------------------------------------------------------------------
 // GET Handler
 // ------------------------------------------------------------------
 export async function GET(req, { params }) {
-  // NEU: Rate Limit auch für GET (Optional, aber empfohlen)
   if (checkRateLimit(req)) {
       return NextResponse.json({ error: "Too many requests" }, { status: 429 });
   }
@@ -114,6 +150,7 @@ export async function GET(req, { params }) {
   
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
+  // Nutzt jetzt die gecachte Funktion
   const isAdmin = await checkAdmin(session.accessToken, session.user?.id, guildId);
   if (!isAdmin) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
@@ -127,8 +164,6 @@ export async function GET(req, { params }) {
 // POST Handler (Speichern)
 // ------------------------------------------------------------------
 export async function POST(req, { params }) {
-  // NEU: Rate Limit Check!
-  // Wenn zu viele Anfragen von dieser IP kommen, blockieren wir hier sofort.
   if (checkRateLimit(req)) {
     return NextResponse.json(
       { error: "Zu viele Anfragen. Bitte warte kurz." }, 
@@ -146,7 +181,6 @@ export async function POST(req, { params }) {
 
   try {
     const body = await req.json();
-    
     const validatedData = settingsSchema.parse(body);
 
     delete validatedData._id;
