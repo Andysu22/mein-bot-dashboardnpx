@@ -4,19 +4,19 @@ import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import connectDB from "@/lib/db";
 import { GuildSettings } from "@/models/GuildSettings";
 import { z } from "zod";
+// NEU: Rate Limit Import
+import { checkRateLimit } from "@/lib/rateLimit";
 
 // ------------------------------------------------------------------
-// 1. Sicheres Schema für Discord Embeds definieren
+// 1. Sicheres Schema für Discord Embeds (Unverändert)
 // ------------------------------------------------------------------
 const embedSchema = z.object({
   title: z.string().max(256).optional().nullable(),
   description: z.string().max(4096).optional().nullable(),
-  // Farbe kann String (Hex) oder Number sein
   color: z.union([z.string(), z.number()]).optional().nullable(),
   
   author: z.object({
     name: z.string().max(256).optional().nullable(),
-    // URLs müssen valide sein oder leerer String
     icon_url: z.string().url().optional().nullable().or(z.literal("")),
     url: z.string().url().optional().nullable().or(z.literal("")),
   }).optional().nullable(),
@@ -30,7 +30,6 @@ const embedSchema = z.object({
   thumbnail_url: z.string().url().optional().nullable().or(z.literal("")),
   timestamp: z.boolean().optional().nullable(),
   
-  // Discord erlaubt maximal 25 Felder
   fields: z.array(
     z.object({
       name: z.string().min(1).max(256),
@@ -41,7 +40,7 @@ const embedSchema = z.object({
 });
 
 // ------------------------------------------------------------------
-// 2. Settings Schema aktualisieren (inkl. Limits)
+// 2. Settings Schema (Unverändert)
 // ------------------------------------------------------------------
 const settingsSchema = z.object({
   ticketsEnabled: z.boolean().optional(),
@@ -51,22 +50,16 @@ const settingsSchema = z.object({
   ticketLanguage: z.string().optional(),
   panelChannelId: z.string().nullable().optional(),
   botNickname: z.string().nullable().optional(),
-  
-  // HIER: Das neue, sichere Schema einsetzen
   panelEmbed: embedSchema.optional().nullable(),
-  
-  // Limits für Buttons und Modals setzen
   panelButtonText: z.string().max(80).optional(),
   panelButtonStyle: z.string().optional(),
-  
   modalTitle: z.string().max(45).optional(),
   ticketWelcomeMessage: z.string().max(2000).optional(),
-}).passthrough(); // .passthrough() lässt unbekannte Felder zu (optional)
+}).passthrough();
 
 // ------------------------------------------------------------------
-// Helper Funktionen
+// Helper Funktionen (Unverändert)
 // ------------------------------------------------------------------
-
 async function updateBotNickname(guildId, nickname) {
   const botToken = process.env.DISCORD_TOKEN;
   if (!botToken) return;
@@ -83,7 +76,7 @@ async function checkAdmin(accessToken, userId, guildId) {
   try {
     if (!guildId) return false;
     
-    // Prüfen, ob User der Owner ist (via Bot Token)
+    // Owner Check via Bot Token
     const botToken = process.env.DISCORD_TOKEN;
     if (botToken && userId) {
       const gRes = await fetch(`https://discord.com/api/v10/guilds/${guildId}`, { headers: { Authorization: `Bot ${botToken}` } });
@@ -93,7 +86,7 @@ async function checkAdmin(accessToken, userId, guildId) {
       }
     }
     
-    // Prüfen über User Access Token (Permissions)
+    // Permissions Check via User Token
     if (!accessToken) return false;
     const res = await fetch("https://discord.com/api/v10/users/@me/guilds", { headers: { Authorization: `Bearer ${accessToken}` } });
     if (!res.ok) return false;
@@ -103,7 +96,6 @@ async function checkAdmin(accessToken, userId, guildId) {
     if (guild.owner === true) return true;
     
     let p; try { p = BigInt(guild.permissions); } catch { return false; }
-    // Check ADMIN (0x8) or MANAGE_GUILD (0x20)
     return (p & BigInt(0x8)) === BigInt(0x8) || (p & BigInt(0x20)) === BigInt(0x20);
   } catch { return false; }
 }
@@ -112,6 +104,11 @@ async function checkAdmin(accessToken, userId, guildId) {
 // GET Handler
 // ------------------------------------------------------------------
 export async function GET(req, { params }) {
+  // NEU: Rate Limit auch für GET (Optional, aber empfohlen)
+  if (checkRateLimit(req)) {
+      return NextResponse.json({ error: "Too many requests" }, { status: 429 });
+  }
+
   const { guildId } = await params;
   const session = await getServerSession(authOptions);
   
@@ -130,6 +127,15 @@ export async function GET(req, { params }) {
 // POST Handler (Speichern)
 // ------------------------------------------------------------------
 export async function POST(req, { params }) {
+  // NEU: Rate Limit Check!
+  // Wenn zu viele Anfragen von dieser IP kommen, blockieren wir hier sofort.
+  if (checkRateLimit(req)) {
+    return NextResponse.json(
+      { error: "Zu viele Anfragen. Bitte warte kurz." }, 
+      { status: 429 }
+    );
+  }
+
   const { guildId } = await params;
   const session = await getServerSession(authOptions);
   
@@ -141,11 +147,8 @@ export async function POST(req, { params }) {
   try {
     const body = await req.json();
     
-    // 1. Validierung mit dem neuen strikten Schema
-    // Wenn hier etwas falsch ist, wirft Zod einen Fehler und der Code springt in den catch-Block
     const validatedData = settingsSchema.parse(body);
 
-    // 2. Interne Felder entfernen (Sicherheitsmaßnahme für MongoDB Updates)
     delete validatedData._id;
     delete validatedData.__v;
 
@@ -153,14 +156,12 @@ export async function POST(req, { params }) {
 
     await connectDB();
     
-    // 3. Speichern in der DB
     const updated = await GuildSettings.findOneAndUpdate(
       { guildId },
       { $set: validatedData },
       { upsert: true, new: true }
     );
 
-    // 4. Nickname Update (optional)
     if (Object.prototype.hasOwnProperty.call(validatedData, "botNickname")) {
       await updateBotNickname(guildId, validatedData.botNickname);
     }
@@ -168,7 +169,6 @@ export async function POST(req, { params }) {
     return NextResponse.json(updated);
   } catch (error) {
     console.error("Settings save error:", error);
-    // Gib dem Frontend Details, was falsch war (z.B. "Title too long")
     return NextResponse.json({ error: "Invalid data", details: error.message || error.errors }, { status: 400 });
   }
 }
