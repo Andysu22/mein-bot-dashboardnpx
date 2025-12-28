@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { nanoid } from "nanoid";
 import { DndContext, PointerSensor, useSensor, useSensors, closestCenter } from "@dnd-kit/core";
 import { SortableContext, verticalListSortingStrategy, useSortable, arrayMove } from "@dnd-kit/sortable";
@@ -11,6 +11,7 @@ import {
   Trash2, 
   ChevronRight, 
   ChevronDown, 
+  ChevronUp,
   User, 
   ImageIcon, 
   Type, 
@@ -19,7 +20,8 @@ import {
   Clock,
   Palette,
   Layout,
-  Link as LinkIcon
+  Link as LinkIcon,
+  Check
 } from "lucide-react";
 
 // --- Helpers ---
@@ -38,9 +40,154 @@ function defaultField() {
 function toHexColor(s) {
   const t = String(s ?? "").trim();
   if (!t) return "#5865F2";
-  const v = t.startsWith("#") ? t : `#${t}`;
-  if (!/^#[0-9a-fA-F]{6}$/.test(v)) return "#5865F2";
-  return v.toUpperCase();
+  // Simple check
+  if (t.startsWith("#") && (t.length === 4 || t.length === 7)) return t.toUpperCase();
+  if (!t.startsWith("#") && (t.length === 3 || t.length === 6)) return `#${t}`.toUpperCase();
+  return "#5865F2";
+}
+
+// --- Modern Color Picker Component ---
+function ModernColorPicker({ value, onChange }) {
+  const [isOpen, setIsOpen] = useState(false);
+  const containerRef = useRef(null);
+
+  const presets = [
+    "#5865F2", // Blurple
+    "#57F287", // Green
+    "#ED4245", // Red
+    "#FEE75C", // Yellow
+    "#EB459E", // Fuchsia
+    "#FFFFFF", // White
+    "#2B2D31", // Dark Grey
+    "#000000", // Black
+  ];
+
+  useEffect(() => {
+    function handleClickOutside(event) {
+      if (containerRef.current && !containerRef.current.contains(event.target)) {
+        setIsOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  return (
+    <div className="relative" ref={containerRef}>
+      <button
+        type="button"
+        onClick={() => setIsOpen(!isOpen)}
+        className="flex items-center gap-2 bg-[#111214] border border-white/10 rounded-md px-2 py-1.5 hover:border-white/20 transition-all group"
+      >
+        <div 
+            className="w-5 h-5 rounded-[4px] shadow-sm border border-white/10" 
+            style={{ backgroundColor: value }} 
+        />
+        <span className="font-mono text-xs text-gray-300 group-hover:text-white uppercase">
+            {value}
+        </span>
+        <ChevronDown className="w-3 h-3 text-gray-500 ml-1" />
+      </button>
+
+      {isOpen && (
+        <div className="absolute top-full right-0 mt-2 z-50 bg-[#1e1f22] border border-white/10 rounded-lg shadow-2xl p-3 w-56 animate-in fade-in zoom-in-95 duration-100">
+           
+           <div className="text-[10px] font-bold text-gray-400 uppercase mb-2">Presets</div>
+           <div className="grid grid-cols-4 gap-2 mb-4">
+              {presets.map(color => (
+                  <button
+                    key={color}
+                    onClick={() => { onChange(color); setIsOpen(false); }}
+                    className="w-full aspect-square rounded-md border border-white/5 hover:scale-105 transition-transform relative group"
+                    style={{ backgroundColor: color }}
+                  >
+                     {value.toUpperCase() === color && (
+                         <div className="absolute inset-0 flex items-center justify-center">
+                             <Check className={cn("w-4 h-4 shadow-sm", color === '#FFFFFF' || color === '#FEE75C' || color === '#57F287' ? "text-black" : "text-white")} />
+                         </div>
+                     )}
+                  </button>
+              ))}
+           </div>
+
+           <div className="text-[10px] font-bold text-gray-400 uppercase mb-2">Custom</div>
+           <div className="flex gap-2">
+              <div className="relative flex-1">
+                 <span className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-500 text-xs">#</span>
+                 <input 
+                    value={value.replace('#', '')} 
+                    onChange={(e) => onChange(`#${e.target.value}`)}
+                    className="w-full bg-[#111214] border border-white/10 rounded-md pl-5 pr-2 py-1.5 text-xs text-white uppercase focus:border-[#5865F2] outline-none"
+                    maxLength={6}
+                 />
+              </div>
+              <div className="relative w-8 h-8 rounded-md overflow-hidden border border-white/10">
+                 <input 
+                    type="color" 
+                    value={toHexColor(value)} 
+                    onChange={(e) => onChange(e.target.value)} 
+                    className="absolute inset-[-4px] w-[150%] h-[150%] cursor-pointer p-0 border-0" 
+                 />
+              </div>
+           </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// --- Collapsible Section Component ---
+function CollapsibleBuilderSection({ title, icon: Icon, children, defaultOpen = false, extraAction }) {
+  const [isOpen, setIsOpen] = useState(defaultOpen);
+  const [isAnimationDone, setIsAnimationDone] = useState(defaultOpen);
+
+  useEffect(() => {
+    if (isOpen) {
+      const timer = setTimeout(() => setIsAnimationDone(true), 300);
+      return () => clearTimeout(timer);
+    } else {
+      setIsAnimationDone(false);
+    }
+  }, [isOpen]);
+
+  return (
+    <div className="border border-white/10 rounded-md bg-[#16171a] transition-all duration-200">
+      <div
+        className="w-full flex items-center justify-between px-4 py-3 bg-[#1e1f22] hover:bg-[#232428] transition-colors rounded-t-md cursor-pointer select-none"
+        onClick={(e) => {
+            // Prevent collapsing when interacting with inputs in header (if any)
+            if(e.target.tagName !== 'INPUT' && e.target.tagName !== 'BUTTON') {
+                setIsOpen(!isOpen);
+            }
+        }}
+      >
+        <div className="flex items-center gap-2.5 text-gray-200 font-medium text-sm">
+          {Icon && <Icon className="w-4 h-4 text-[#5865F2]" />}
+          <span>{title}</span>
+        </div>
+        
+        <div className="flex items-center gap-3">
+            {extraAction && <div onClick={e => e.stopPropagation()}>{extraAction}</div>}
+            <button onClick={() => setIsOpen(!isOpen)} className="text-gray-500 hover:text-white transition-colors">
+                {isOpen ? (
+                <ChevronUp className="w-4 h-4" />
+                ) : (
+                <ChevronDown className="w-4 h-4" />
+                )}
+            </button>
+        </div>
+      </div>
+      <div
+        className={cn(
+          "transition-[max-height,opacity] duration-300 ease-in-out",
+          isOpen ? "max-h-[2000px] opacity-100" : "max-h-0 opacity-0 overflow-hidden"
+        )}
+        style={{ overflow: isAnimationDone && isOpen ? "visible" : "hidden" }} 
+      >
+        <div className="p-5 border-t border-white/5 space-y-5">{children}</div>
+      </div>
+    </div>
+  );
 }
 
 // --- Toggle Switch ---
@@ -49,14 +196,14 @@ function ToggleSwitch({ checked, onChange }) {
     <div 
       onClick={(e) => { e.stopPropagation(); onChange(!checked); }}
       className={cn(
-        "w-10 h-5 rounded-full relative cursor-pointer transition-colors duration-200 ease-in-out border border-transparent",
+        "w-9 h-5 rounded-full relative cursor-pointer transition-colors duration-200 ease-in-out border border-transparent",
         checked ? "bg-[#5865F2]" : "bg-[#3f4147]"
       )}
     >
       <div 
         className={cn(
           "w-3.5 h-3.5 bg-white rounded-full absolute top-[2px] shadow-sm transition-transform duration-200 ease-in-out",
-          checked ? "translate-x-5" : "translate-x-0.5"
+          checked ? "translate-x-4" : "translate-x-0.5"
         )}
       />
     </div>
@@ -74,7 +221,7 @@ function SortableFieldRow({ field, onChange, onDelete, listeners, attributes, se
   };
 
   return (
-    <div ref={setNodeRef} style={style} className={cn("rounded-lg border bg-[#1e1f22] transition-all overflow-hidden mb-3 group", isDragging ? "border-[#5865F2] shadow-xl ring-1 ring-[#5865F2]" : "border-white/5 hover:border-white/10")}>
+    <div ref={setNodeRef} style={style} className={cn("rounded-md border bg-[#1e1f22] transition-all overflow-hidden mb-2 group", isDragging ? "border-[#5865F2] shadow-xl ring-1 ring-[#5865F2]" : "border-white/5 hover:border-white/10")}>
       <div className="flex items-center gap-3 p-3 cursor-pointer select-none bg-[#2b2d31]/50 hover:bg-[#2b2d31]" onClick={() => onChange({ ...field, collapsed: !field.collapsed })}>
         <button type="button" className="touch-none text-gray-500 hover:text-gray-300 cursor-grab active:cursor-grabbing p-1" {...attributes} {...listeners}>
           <GripVertical className="h-4 w-4" />
@@ -127,7 +274,6 @@ function SortableField(props) {
 }
 
 // --- MAIN BUILDER ---
-// HIER: hiddenSections als Prop hinzugefügt (Default ist leeres Array = zeige alles)
 export default function EmbedBuilder({ data, onChange, hiddenSections = [] }) {
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
 
@@ -150,89 +296,81 @@ export default function EmbedBuilder({ data, onChange, hiddenSections = [] }) {
   const onDeleteField = (id) => onChange({ ...data, fields: data.fields.filter(x => x.id !== id) });
 
   return (
-    <div className="space-y-8 animate-in fade-in slide-in-from-bottom-2 duration-500 max-w-4xl mx-auto">
+    <div className="space-y-4 animate-in fade-in slide-in-from-bottom-2 duration-500 w-full">
         
-        {/* SECTION 1: GENERAL (Always visible) */}
-        <div className="bg-[#1e1f22] rounded-xl border border-white/5 overflow-hidden">
-            <div className="bg-[#2b2d31] px-4 py-3 border-b border-white/5 flex items-center justify-between">
-                <h3 className="text-xs font-bold text-gray-300 uppercase tracking-wider flex items-center gap-2">
-                    <Layout className="w-4 h-4 text-[#5865F2]"/> Allgemein
-                </h3>
-                
-                <div className="flex items-center gap-3">
-                    <label className="text-[10px] font-bold text-gray-500 uppercase">Farbe</label>
-                    <div className="relative flex items-center gap-2 bg-[#111214] p-1 rounded-md border border-white/10">
-                        <input type="color" value={toHexColor(data.color)} onChange={(e) => onChange({...data, color: e.target.value})} className="w-6 h-6 rounded cursor-pointer border-none p-0 bg-transparent" />
-                        <input value={data.color || "#5865F2"} onChange={(e) => onChange({...data, color: e.target.value})} className="w-16 bg-transparent text-xs font-mono text-white outline-none uppercase" maxLength={7} />
-                    </div>
-                </div>
-            </div>
-            <div className="p-5 grid gap-5">
+        {/* SECTION 1: GENERAL */}
+        <CollapsibleBuilderSection 
+            title="Allgemein" 
+            icon={Layout} 
+            defaultOpen={true}
+            extraAction={
+                <ModernColorPicker 
+                    value={toHexColor(data.color)} 
+                    onChange={(c) => onChange({...data, color: c})} 
+                />
+            }
+        >
+            <div className="space-y-3">
                 <div className="space-y-1.5">
                     <label className="text-[10px] uppercase font-bold text-gray-400 pl-1 flex items-center gap-1.5"><Type className="w-3 h-3"/> Embed Titel</label>
-                    <input value={data.title || ""} onChange={(e) => onChange({...data, title: e.target.value})} className="w-full bg-[#111214] border border-white/10 rounded-lg px-4 py-2.5 text-sm font-bold text-white focus:border-[#5865F2] outline-none transition-all placeholder:text-gray-600" placeholder="Titel des Embeds" maxLength={256} />
+                    <input value={data.title || ""} onChange={(e) => onChange({...data, title: e.target.value})} className="w-full bg-[#111214] border border-white/10 rounded-md px-3 py-2 text-sm font-medium text-white focus:border-[#5865F2] outline-none transition-all placeholder:text-gray-600" placeholder="Titel des Embeds" maxLength={256} />
                 </div>
                 <div className="space-y-1.5">
                     <label className="text-[10px] uppercase font-bold text-gray-400 pl-1 flex items-center gap-1.5"><Layout className="w-3 h-3"/> Beschreibung</label>
-                    <textarea value={data.description || ""} onChange={(e) => onChange({...data, description: e.target.value})} className="w-full bg-[#111214] border border-white/10 rounded-lg px-4 py-3 text-sm text-gray-300 focus:border-[#5865F2] outline-none transition-all resize-y min-h-[100px] placeholder:text-gray-600 leading-relaxed" placeholder="Schreibe hier den Hauptinhalt..." maxLength={4096} />
+                    <textarea value={data.description || ""} onChange={(e) => onChange({...data, description: e.target.value})} className="w-full bg-[#111214] border border-white/10 rounded-md px-3 py-2 text-sm text-gray-300 focus:border-[#5865F2] outline-none transition-all resize-y min-h-[100px] placeholder:text-gray-600 leading-relaxed custom-scrollbar" placeholder="Schreibe hier den Hauptinhalt..." maxLength={4096} />
                 </div>
             </div>
-        </div>
+        </CollapsibleBuilderSection>
 
-        {/* SECTION 2: AUTHOR (Conditional) */}
+        {/* SECTION 2: AUTHOR */}
         {!hiddenSections.includes('author') && (
-            <div className="bg-[#1e1f22] rounded-xl border border-white/5 overflow-hidden">
-                <div className="bg-[#2b2d31] px-4 py-3 border-b border-white/5">
-                    <h3 className="text-xs font-bold text-gray-300 uppercase tracking-wider flex items-center gap-2">
-                        <User className="w-4 h-4 text-orange-400"/> Autor (Oben)
-                    </h3>
-                </div>
-                <div className="p-5 grid grid-cols-1 md:grid-cols-2 gap-5">
+            <CollapsibleBuilderSection title="Autor" icon={User} defaultOpen={false}>
+                 <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                     <div className="space-y-1.5">
                         <label className="text-[10px] uppercase font-bold text-gray-400 pl-1">Autor Name</label>
-                        <input value={data.author?.name || ""} onChange={(e) => onChange({...data, author: {...data.author, name: e.target.value}})} className="w-full bg-[#111214] border border-white/10 rounded-lg px-3 py-2 text-xs font-medium text-white focus:border-[#5865F2] outline-none" placeholder="Name..." maxLength={256} />
+                        <input value={data.author?.name || ""} onChange={(e) => onChange({...data, author: {...data.author, name: e.target.value}})} className="w-full bg-[#111214] border border-white/10 rounded-md px-3 py-2 text-sm text-white focus:border-[#5865F2] outline-none" placeholder="Name..." maxLength={256} />
                     </div>
                     <div className="space-y-1.5">
                         <label className="text-[10px] uppercase font-bold text-gray-400 pl-1 flex items-center gap-1"><LinkIcon className="w-3 h-3"/> Icon URL</label>
-                        <input value={data.author?.icon_url || ""} onChange={(e) => onChange({...data, author: {...data.author, icon_url: e.target.value}})} className="w-full bg-[#111214] border border-white/10 rounded-lg px-3 py-2 text-xs text-gray-400 focus:border-[#5865F2] outline-none font-mono" placeholder="https://..." />
+                        <input value={data.author?.icon_url || ""} onChange={(e) => onChange({...data, author: {...data.author, icon_url: e.target.value}})} className="w-full bg-[#111214] border border-white/10 rounded-md px-3 py-2 text-sm text-gray-400 focus:border-[#5865F2] outline-none font-mono" placeholder="https://..." />
                     </div>
                 </div>
-            </div>
+            </CollapsibleBuilderSection>
         )}
 
-        {/* SECTION 3: IMAGES (Conditional) */}
+        {/* SECTION 3: IMAGES */}
         {!hiddenSections.includes('images') && (
-            <div className="bg-[#1e1f22] rounded-xl border border-white/5 overflow-hidden">
-                <div className="bg-[#2b2d31] px-4 py-3 border-b border-white/5">
-                    <h3 className="text-xs font-bold text-gray-300 uppercase tracking-wider flex items-center gap-2">
-                        <ImageIcon className="w-4 h-4 text-green-400"/> Bilder
-                    </h3>
-                </div>
-                <div className="p-5 grid grid-cols-1 md:grid-cols-2 gap-5">
+            <CollapsibleBuilderSection title="Bilder" icon={ImageIcon} defaultOpen={false}>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                     <div className="space-y-1.5">
                         <label className="text-[10px] uppercase font-bold text-gray-400 pl-1">Thumbnail (Klein rechts)</label>
-                        <input value={data.thumbnail_url || ""} onChange={(e) => onChange({...data, thumbnail_url: e.target.value})} className="w-full bg-[#111214] border border-white/10 rounded-lg px-3 py-2 text-xs text-gray-400 focus:border-[#5865F2] outline-none font-mono" placeholder="https://..." />
+                        <input value={data.thumbnail_url || ""} onChange={(e) => onChange({...data, thumbnail_url: e.target.value})} className="w-full bg-[#111214] border border-white/10 rounded-md px-3 py-2 text-sm text-gray-400 focus:border-[#5865F2] outline-none font-mono" placeholder="https://..." />
                     </div>
                     <div className="space-y-1.5">
                         <label className="text-[10px] uppercase font-bold text-gray-400 pl-1">Hauptbild (Groß unten)</label>
-                        <input value={data.image_url || ""} onChange={(e) => onChange({...data, image_url: e.target.value})} className="w-full bg-[#111214] border border-white/10 rounded-lg px-3 py-2 text-xs text-gray-400 focus:border-[#5865F2] outline-none font-mono" placeholder="https://..." />
+                        <input value={data.image_url || ""} onChange={(e) => onChange({...data, image_url: e.target.value})} className="w-full bg-[#111214] border border-white/10 rounded-md px-3 py-2 text-sm text-gray-400 focus:border-[#5865F2] outline-none font-mono" placeholder="https://..." />
                     </div>
                 </div>
-            </div>
+            </CollapsibleBuilderSection>
         )}
 
-        {/* SECTION 4: FIELDS (Conditional) */}
+        {/* SECTION 4: FIELDS */}
         {!hiddenSections.includes('fields') && (
-            <div>
-                <div className="flex items-center justify-between mb-4 px-1">
-                    <h3 className="text-sm font-bold text-white flex items-center gap-2">
-                        <Layout className="w-4 h-4 text-blue-400"/> Felder
-                        <span className="text-[10px] bg-white/10 text-gray-400 px-2 py-0.5 rounded-full">{(data.fields || []).length}/{MAX_FIELDS}</span>
-                    </h3>
-                    <button type="button" onClick={onAddField} disabled={(data.fields || []).length >= MAX_FIELDS} className={cn("px-3 py-1.5 rounded-md bg-[#5865F2] hover:bg-[#4752c4] text-xs font-bold text-white transition flex items-center gap-1.5 shadow-sm", (data.fields || []).length >= MAX_FIELDS && "opacity-50 cursor-not-allowed")}>
-                        <Plus className="w-3.5 h-3.5"/> Feld hinzufügen
+             <CollapsibleBuilderSection 
+                title={`Felder (${(data.fields || []).length}/${MAX_FIELDS})`} 
+                icon={Layout} 
+                defaultOpen={false}
+                extraAction={
+                    <button 
+                        type="button" 
+                        onClick={(e) => { e.stopPropagation(); onAddField(); }} 
+                        disabled={(data.fields || []).length >= MAX_FIELDS} 
+                        className={cn("px-2 py-1 rounded-sm bg-[#5865F2] hover:bg-[#4752c4] text-[10px] font-bold text-white transition flex items-center gap-1", (data.fields || []).length >= MAX_FIELDS && "opacity-50 cursor-not-allowed")}
+                    >
+                        <Plus className="w-3 h-3"/> Neu
                     </button>
-                </div>
+                }
+             >
                 <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
                     <SortableContext items={(data.fields || []).map((f) => f.id)} strategy={verticalListSortingStrategy}>
                     <div className="flex flex-col">
@@ -243,33 +381,28 @@ export default function EmbedBuilder({ data, onChange, hiddenSections = [] }) {
                     </SortableContext>
                 </DndContext>
                 {(data.fields || []).length === 0 && (
-                    <div className="flex flex-col items-center justify-center py-10 border-2 border-dashed border-white/5 rounded-xl bg-white/[0.01]">
+                    <div className="flex flex-col items-center justify-center py-6 border border-dashed border-white/10 rounded-md bg-white/[0.01]">
                         <span className="text-xs text-gray-500">Keine Felder hinzugefügt.</span>
                     </div>
                 )}
-            </div>
+            </CollapsibleBuilderSection>
         )}
 
-        {/* SECTION 5: FOOTER (Conditional) */}
+        {/* SECTION 5: FOOTER */}
         {!hiddenSections.includes('footer') && (
-            <div className="bg-[#1e1f22] rounded-xl border border-white/5 overflow-hidden">
-                <div className="bg-[#2b2d31] px-4 py-3 border-b border-white/5">
-                    <h3 className="text-xs font-bold text-gray-300 uppercase tracking-wider flex items-center gap-2">
-                        <PanelBottom className="w-4 h-4 text-purple-400"/> Footer & Zeit
-                    </h3>
-                </div>
-                <div className="p-5 space-y-5">
+            <CollapsibleBuilderSection title="Footer & Zeitstempel" icon={PanelBottom} defaultOpen={false}>
+                <div className="space-y-5">
                     <div className="grid grid-cols-1 md:grid-cols-[1fr_200px] gap-5">
                         <div className="space-y-1.5">
                             <label className="text-[10px] uppercase font-bold text-gray-400 pl-1">Footer Text</label>
-                            <input value={data.footer?.text || ""} onChange={(e) => onChange({...data, footer: {...data.footer, text: e.target.value}})} className="w-full bg-[#111214] border border-white/10 rounded-lg px-3 py-2 text-xs font-medium text-white focus:border-[#5865F2] outline-none" placeholder="Kleingedrucktes..." maxLength={2048} />
+                            <input value={data.footer?.text || ""} onChange={(e) => onChange({...data, footer: {...data.footer, text: e.target.value}})} className="w-full bg-[#111214] border border-white/10 rounded-md px-3 py-2 text-sm text-white focus:border-[#5865F2] outline-none" placeholder="Kleingedrucktes..." maxLength={2048} />
                         </div>
                         <div className="space-y-1.5">
                             <label className="text-[10px] uppercase font-bold text-gray-400 pl-1 flex items-center gap-1"><LinkIcon className="w-3 h-3"/> Footer Icon</label>
-                            <input value={data.footer?.icon_url || ""} onChange={(e) => onChange({...data, footer: {...data.footer, icon_url: e.target.value}})} className="w-full bg-[#111214] border border-white/10 rounded-lg px-3 py-2 text-xs text-gray-400 focus:border-[#5865F2] outline-none font-mono" placeholder="https://..." />
+                            <input value={data.footer?.icon_url || ""} onChange={(e) => onChange({...data, footer: {...data.footer, icon_url: e.target.value}})} className="w-full bg-[#111214] border border-white/10 rounded-md px-3 py-2 text-sm text-gray-400 focus:border-[#5865F2] outline-none font-mono" placeholder="https://..." />
                         </div>
                     </div>
-                    <div className="flex items-center justify-between bg-[#111214] p-3 rounded-lg border border-white/5">
+                    <div className="flex items-center justify-between bg-[#111214] p-3 rounded-md border border-white/5">
                         <div className="flex items-center gap-3">
                             <div className="p-2 bg-[#1e1f22] rounded-md text-gray-400"><Clock className="w-4 h-4" /></div>
                             <div className="flex flex-col">
@@ -280,7 +413,7 @@ export default function EmbedBuilder({ data, onChange, hiddenSections = [] }) {
                         <ToggleSwitch checked={!!data.timestamp} onChange={(v) => onChange({ ...data, timestamp: v })} />
                     </div>
                 </div>
-            </div>
+            </CollapsibleBuilderSection>
         )}
 
     </div>

@@ -17,7 +17,7 @@ export default function PageWrapper({ children }) {
   return (
     <div
       data-scroll-container="true"
-      className="p-4 md:p-6 xl:p-8 w-full max-w-7xl mx-auto h-full overflow-y-auto custom-scrollbar"
+      className="p-4 md:p-6 xl:p-8 w-full max-w-[90%] mx-auto h-full overflow-y-auto custom-scrollbar"
     >
       {children}
     </div>

@@ -7,13 +7,13 @@ import {
   RefreshCw,
   Save,
   Send,
-  PenTool,
   History,
   LayoutTemplate,
   Type,
   MousePointerClick,
   Code2,
   ChevronDown,
+  ChevronUp,
   Hash,
   Users,
   FolderOpen,
@@ -22,7 +22,12 @@ import {
   BarChart3,
   CalendarDays,
   Inbox,
-  CheckCircle2
+  CheckCircle2,
+  AlertCircle,
+  FileText,
+  Sparkles,
+  Copy,
+  ClipboardCheck
 } from "lucide-react";
 import { useParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
@@ -33,7 +38,6 @@ import {
   CardContent,
   CardHeader,
   CardTitle,
-  CardDescription,
 } from "@/components/ui/card";
 
 import ModalBuilder from "@/components/builders/modal/ModalBuilder";
@@ -53,16 +57,172 @@ function truncate(s, max) {
   return str.length > max ? str.slice(0, max - 1) + "…" : str;
 }
 
+// --- UI HELPERS ---
+
+function CollapsibleSection({ title, icon: Icon, children, defaultOpen = true }) {
+  const [isOpen, setIsOpen] = useState(defaultOpen);
+  const [isAnimationDone, setIsAnimationDone] = useState(defaultOpen);
+
+  useEffect(() => {
+    if (isOpen) {
+      const timer = setTimeout(() => setIsAnimationDone(true), 300); // Warte auf Transition
+      return () => clearTimeout(timer);
+    } else {
+      setIsAnimationDone(false);
+    }
+  }, [isOpen]);
+
+  return (
+    <div className="border border-white/10 rounded-md bg-[#16171a] transition-all duration-200">
+      <button
+        type="button"
+        onClick={() => setIsOpen(!isOpen)}
+        className="w-full flex items-center justify-between px-4 py-3 bg-[#1e1f22] hover:bg-[#232428] transition-colors rounded-t-md"
+      >
+        <div className="flex items-center gap-2.5 text-gray-200 font-medium text-sm">
+          {Icon && <Icon className="w-4 h-4 text-[#5865F2]" />}
+          <span>{title}</span>
+        </div>
+        {isOpen ? (
+          <ChevronUp className="w-4 h-4 text-gray-500" />
+        ) : (
+          <ChevronDown className="w-4 h-4 text-gray-500" />
+        )}
+      </button>
+      <div
+        className={cn(
+          "transition-[max-height,opacity] duration-300 ease-in-out",
+          isOpen ? "max-h-[2000px] opacity-100" : "max-h-0 opacity-0 overflow-hidden"
+        )}
+        style={{ overflow: isAnimationDone && isOpen ? "visible" : "hidden" }} 
+      >
+        <div className="p-5 space-y-4 border-t border-white/5">{children}</div>
+      </div>
+    </div>
+  );
+}
+
+// --- Variable Dropdown Helper ---
+function VariableDropdown({ modal }) {
+  const [isOpen, setIsOpen] = useState(false);
+  const [copyFeedback, setCopyFeedback] = useState(null); // null or string (the copied value)
+  const containerRef = useRef(null);
+
+  // Standard Variables
+  const standardVars = [
+    { label: "User Mention", value: "{user}", desc: "Erwähnt den User (@User)" },
+    { label: "Username", value: "{username}", desc: "Name des Users" },
+    { label: "Server Name", value: "{server}", desc: "Name des Servers" },
+    { label: "Channel Name", value: "{channel}", desc: "Aktueller Channel" },
+    { label: "Ticket ID", value: "{ticket_id}", desc: "Nummer des Tickets (z.B. 004)" },
+  ];
+
+  // Dynamic Variables from Modal Components
+  const formVars = (modal?.components || []).map(c => ({
+    label: c.label || "Unbenanntes Feld",
+    value: `{field:${c.custom_id || "unknown"}}`,
+    desc: `Inhalt von '${truncate(c.label, 20)}'`
+  }));
+
+  useEffect(() => {
+    function handleClickOutside(event) {
+      if (containerRef.current && !containerRef.current.contains(event.target)) {
+        setIsOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const handleCopy = (val) => {
+    navigator.clipboard.writeText(val);
+    setCopyFeedback(val);
+    setIsOpen(false);
+    setTimeout(() => setCopyFeedback(null), 2000);
+  };
+
+  return (
+    <div className="relative w-full md:w-auto" ref={containerRef}>
+      <button
+        type="button"
+        onClick={() => setIsOpen(!isOpen)}
+        className={cn(
+            "flex items-center gap-2 px-3 py-2 rounded-md border text-xs font-bold uppercase tracking-wider transition-all min-w-[200px] justify-between",
+            copyFeedback 
+                ? "bg-green-500/10 border-green-500/50 text-green-400" 
+                : "bg-[#1e1f22] border-white/10 text-gray-300 hover:border-[#5865F2] hover:text-white"
+        )}
+      >
+        <div className="flex items-center gap-2">
+            {copyFeedback ? <ClipboardCheck className="w-4 h-4" /> : <Code2 className="w-4 h-4" />}
+            <span>{copyFeedback ? "Kopiert!" : "Variable kopieren"}</span>
+        </div>
+        <ChevronDown className={cn("w-3 h-3 transition-transform", isOpen && "rotate-180")} />
+      </button>
+
+      {isOpen && (
+        <div className="absolute top-full left-0 mt-2 z-50 w-[280px] bg-[#1e1f22] border border-white/10 rounded-lg shadow-2xl overflow-hidden animate-in fade-in slide-in-from-top-1 duration-100 max-h-[400px] overflow-y-auto custom-scrollbar">
+            
+            {/* Standard Vars Group */}
+            <div className="px-3 py-2 text-[10px] font-bold text-gray-500 uppercase bg-[#111214] border-b border-white/5 sticky top-0">
+                Standard
+            </div>
+            <div className="p-1">
+                {standardVars.map((v) => (
+                    <button
+                        key={v.value}
+                        onClick={() => handleCopy(v.value)}
+                        className="w-full text-left px-3 py-2 rounded-[4px] hover:bg-[#5865F2] hover:text-white group transition-colors flex flex-col gap-0.5"
+                    >
+                        <div className="flex items-center justify-between">
+                            <span className="font-mono text-xs font-bold text-gray-200 group-hover:text-white">{v.value}</span>
+                            <Copy className="w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity" />
+                        </div>
+                        <span className="text-[10px] text-gray-500 group-hover:text-white/80">{v.desc}</span>
+                    </button>
+                ))}
+            </div>
+
+            {/* Form Vars Group */}
+            {formVars.length > 0 && (
+                <>
+                    <div className="px-3 py-2 text-[10px] font-bold text-gray-500 uppercase bg-[#111214] border-y border-white/5 sticky top-0">
+                        Formular Felder
+                    </div>
+                    <div className="p-1">
+                        {formVars.map((v) => (
+                            <button
+                                key={v.value}
+                                onClick={() => handleCopy(v.value)}
+                                className="w-full text-left px-3 py-2 rounded-[4px] hover:bg-[#5865F2] hover:text-white group transition-colors flex flex-col gap-0.5"
+                            >
+                                <div className="flex items-center justify-between">
+                                    <span className="font-mono text-xs font-bold text-gray-200 group-hover:text-white truncate max-w-[180px]">{v.value}</span>
+                                    <Copy className="w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity" />
+                                </div>
+                                <span className="text-[10px] text-gray-500 group-hover:text-white/80 truncate">{v.desc}</span>
+                            </button>
+                        ))}
+                    </div>
+                </>
+            )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+
 // --- STATS CARD COMPONENT ---
 function StatsCard({ title, value, icon: Icon, colorClass = "text-white" }) {
   return (
-    <Card className="bg-[#111214] border-white/5 shadow-md flex items-center p-4 gap-4">
-      <div className={cn("p-3 rounded-full bg-white/5", colorClass)}>
-        <Icon className="w-6 h-6" />
+    <Card className="bg-[#111214] border-white/10 shadow-sm flex items-center p-4 gap-4 rounded-lg hover:border-white/20 transition-colors">
+      <div className={cn("p-3 rounded-md bg-white/5", colorClass)}>
+        <Icon className="w-5 h-5" />
       </div>
       <div>
-        <p className="text-sm text-gray-400 font-medium uppercase tracking-wide">{title}</p>
-        <p className="text-2xl font-black text-white">{value}</p>
+        <p className="text-xs text-gray-400 font-bold uppercase tracking-wider">{title}</p>
+        <p className="text-2xl font-bold text-white tracking-tight">{value}</p>
       </div>
     </Card>
   );
@@ -109,8 +269,8 @@ function DiscordSelect({ label, value, onChange, options, placeholder, icon: Ico
   }, []);
 
   return (
-    <div className="space-y-1.5" ref={containerRef}>
-      <Label className="text-gray-400 text-xs uppercase font-bold tracking-wider pl-1">
+    <div className="space-y-1.5 w-full" ref={containerRef}>
+      <Label className="text-gray-400 text-[11px] uppercase font-bold tracking-wider pl-0.5">
         {label}
       </Label>
 
@@ -118,7 +278,7 @@ function DiscordSelect({ label, value, onChange, options, placeholder, icon: Ico
         <div
           onClick={() => setIsOpen(!isOpen)}
           className={cn(
-            "w-full bg-[#1e1f22] border border-black/20 text-gray-200 rounded-md px-3 py-2.5 text-sm cursor-pointer flex items-center justify-between transition-all hover:bg-[#232428] hover:border-black/40",
+            "w-full bg-[#1e1f22] border border-black/20 text-gray-200 rounded-sm px-3 py-2 text-sm cursor-pointer flex items-center justify-between transition-all hover:bg-[#232428] hover:border-black/40",
             isOpen
               ? "border-[#5865F2] ring-1 ring-[#5865F2] rounded-b-none border-b-0"
               : ""
@@ -146,7 +306,7 @@ function DiscordSelect({ label, value, onChange, options, placeholder, icon: Ico
         </div>
 
         {isOpen && (
-          <div className="absolute z-50 w-full bg-[#2b2d31] border border-[#5865F2] border-t-0 rounded-b-md shadow-2xl max-h-60 overflow-y-auto custom-scrollbar animate-in fade-in slide-in-from-top-1 duration-100">
+          <div className="absolute z-[9999] w-full bg-[#2b2d31] border border-[#5865F2] border-t-0 rounded-b-sm shadow-xl max-h-60 overflow-y-auto custom-scrollbar animate-in fade-in slide-in-from-top-1 duration-100">
             <div className="p-1 space-y-0.5">
               {options.length === 0 ? (
                 <div className="px-3 py-2 text-sm text-gray-500 text-center italic">
@@ -163,7 +323,7 @@ function DiscordSelect({ label, value, onChange, options, placeholder, icon: Ico
                         setIsOpen(false);
                       }}
                       className={cn(
-                        "px-3 py-2 text-sm rounded cursor-pointer flex items-center gap-2 transition-colors group",
+                        "px-3 py-2 text-sm rounded-[3px] cursor-pointer flex items-center gap-2 transition-colors group",
                         isSelected
                           ? "bg-[#404249] text-white"
                           : "text-gray-300 hover:bg-[#35373c] hover:text-white"
@@ -343,7 +503,7 @@ export default function TicketsPage() {
   const { guildId } = useParams();
 
   const [activeTab, setActiveTab] = useState("overview");
-  const [editorTab, setEditorTab] = useState("modal");
+  const [editorTab, setEditorTab] = useState("config"); // config, panel, modal, response
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(null);
 
@@ -351,12 +511,11 @@ export default function TicketsPage() {
   const [channels, setChannels] = useState([]);
   const [roles, setRoles] = useState([]);
   const [currentGuild, setCurrentGuild] = useState(null);
-  // NEU: Stats State
+  
   const [stats, setStats] = useState({ total: 0, open: 0, thisWeek: 0, closed: 0 });
 
   const [settings, setSettings] = useState(null);
-  const [savingSettings, setSavingSettings] = useState(false);
-  const [formSaving, setFormSaving] = useState(false);
+  const [saving, setSaving] = useState(false);
   const [formMsg, setFormMsg] = useState("");
 
   const [modal, setModal] = useState(defaultTicketModal());
@@ -398,7 +557,6 @@ export default function TicketsPage() {
           fetch(`/api/guilds/${guildId}/roles`),
           fetch(`/api/guilds/${guildId}/tickets/form`),
           fetch(`/api/user/guilds`),
-          // NEU: Stats laden
           fetch(`/api/guilds/${guildId}/tickets/stats`),
         ]);
 
@@ -475,86 +633,94 @@ export default function TicketsPage() {
     } catch {}
   }
 
-  async function saveSettings(e) {
-    e?.preventDefault();
-    setSavingSettings(true);
-
+  // --- SAVE LOGIC (CONTEXT AWARE) ---
+  async function handleSave() {
+    setSaving(true);
     try {
-      const r = await fetch(`/api/settings/${guildId}`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(settings),
-      });
+      if (editorTab === "config") {
+        // Speichere NUR Einstellungen
+        const r = await fetch(`/api/settings/${guildId}`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(settings),
+        });
+        if (r.ok) flashFormMsg("Konfiguration gespeichert ✅");
+        else throw new Error();
+      } 
+      else if (editorTab === "panel") {
+         // Speichere NUR Panel Settings
+         const r = await fetch(`/api/settings/${guildId}`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(settings),
+        });
+        if (r.ok) flashFormMsg("Panel Design gespeichert ✅");
+        else throw new Error();
+      }
+      else if (editorTab === "modal" || editorTab === "response") {
+        // Speichere Formular & Bot
+        const pl = {
+          mode: "custom",
+          version: 1,
+          botCode: buildTicketBotCode(modal),
+          builderData: { modal, response },
+        };
 
-      if (r.ok) {
-        const newData = await r.json();
-        if (!newData.panelEmbed || Object.keys(newData.panelEmbed).length === 0) {
-          newData.panelEmbed = settings.panelEmbed;
-        }
-        setSettings(newData);
-        flashFormMsg("Settings Saved ✅");
-      } else {
-        flashFormMsg("Fehler beim Speichern ❌");
+        const r = await fetch(`/api/guilds/${guildId}/tickets/form`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(pl),
+        });
+
+        if (r.ok) flashFormMsg("Ticket System Update gespeichert ✅");
+        else throw new Error();
       }
     } catch {
-      flashFormMsg("Netzwerk Fehler ❌");
+      flashFormMsg("Fehler beim Speichern ❌");
     } finally {
-      setSavingSettings(false);
+      setSaving(false);
     }
   }
 
-  async function saveTicketForm() {
-    setFormSaving(true);
+  // --- RESET LOGIC (CONTEXT AWARE) ---
+  async function handleReset() {
+    if (!window.confirm("Bist du sicher? Dies setzt den aktuellen Bereich zurück.")) return;
+    setSaving(true);
+
     try {
-      const pl = {
-        mode: "custom",
-        version: 1,
-        botCode: buildTicketBotCode(modal),
-        builderData: { modal, response },
-      };
-
-      const r = await fetch(`/api/guilds/${guildId}/tickets/form`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(pl),
-      });
-
-      if (r.ok) flashFormMsg("Form Saved ✅");
+      if (editorTab === "config") {
+         const newSettings = {
+             ...settings,
+             ticketCategoryId: null,
+             logChannelId: null,
+             panelChannelId: null,
+             supportRoleId: null
+         };
+         setSettings(newSettings);
+         flashFormMsg("Konfiguration zurückgesetzt (Nicht gespeichert)");
+      } 
+      else if (editorTab === "panel") {
+          setSettings({
+              ...settings,
+              panelEmbed: defaultPanelEmbed(),
+              panelButtonText: "",
+              panelButtonStyle: "Primary"
+          });
+          flashFormMsg("Panel zurückgesetzt (Nicht gespeichert)");
+      }
+      else if (editorTab === "modal") {
+          setModal(defaultTicketModal());
+          flashFormMsg("Modal zurückgesetzt (Nicht gespeichert)");
+      }
+      else if (editorTab === "response") {
+          setResponse(defaultTicketResponse());
+          flashFormMsg("Antwort zurückgesetzt (Nicht gespeichert)");
+      }
+    } catch {
+       flashFormMsg("Fehler beim Reset ❌");
     } finally {
-      setFormSaving(false);
+      setSaving(false);
     }
-  }
-
-  async function resetTicketFormToBotDefault() {
-    if (!window.confirm("Formular und Panel auf Standard zurücksetzen?")) return;
-
-    try {
-      const r = await fetch(`/api/guilds/${guildId}/tickets/form/reset`, { method: "POST" });
-      if (r.ok) {
-        setModal(defaultTicketModal());
-        setResponse(defaultTicketResponse());
-        setSettings((s) => ({
-          ...s,
-          panelEmbed: defaultPanelEmbed(),
-          panelButtonText: "Ticket erstellen",
-          panelButtonStyle: "Primary",
-        }));
-        flashFormMsg("Reset ✅");
-      }
-    } catch {}
-  }
-
-  const [varCustomId, setVarCustomId] = useState("");
-
-  function insertVarIntoResponseField(field, token) {
-    setResponse((r) => {
-      const next = { ...r };
-      if (field === "embed.description") {
-        next.embed = { ...next.embed, description: (next.embed?.description || "") + token };
-      }
-      if (field === "text") next.text = safeStr(next.text) + token;
-      return next;
-    });
   }
 
   if (loading) {
@@ -566,7 +732,7 @@ export default function TicketsPage() {
   }
   if (loadError) {
     return (
-      <div className="p-8 text-red-400 bg-red-900/10 border border-red-500/20 rounded-xl m-4">
+      <div className="p-8 text-red-400 bg-red-900/10 border border-red-500/20 rounded-lg m-4">
         ❌ Fehler: {loadError}
       </div>
     );
@@ -580,7 +746,7 @@ export default function TicketsPage() {
     : "https://cdn.discordapp.com/embed/avatars/0.png";
 
   return (
-    <div className="p-6 xl:p-10 mx-auto w-full max-w-[1800px] space-y-8">
+    <div className="p-6 xl:p-10 mx-auto w-full max-w-[1920px] space-y-8 font-sans">
       <style jsx global>{`
         .discord-md strong { font-weight: 700; color: #fff; }
         .discord-md .inlinecode {
@@ -592,44 +758,47 @@ export default function TicketsPage() {
       `}</style>
 
       {/* HEADER */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b border-white/5 pb-6">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b border-white/10 pb-6">
         <div>
-          <h1 className="text-3xl font-black text-white tracking-tight">TICKET SYSTEM</h1>
+          <h1 className="text-2xl font-bold text-white tracking-tight flex items-center gap-3">
+            <Inbox className="w-8 h-8 text-[#5865F2]" />
+            Ticket System
+          </h1>
           <p className="text-gray-400 text-sm mt-1">
-            Verwalte Support-Tickets und konfiguriere das Design.
+            Verwalte Support-Tickets, konfiguriere das Design und den Ablauf.
           </p>
         </div>
-        <div className="flex bg-black/40 p-1 rounded-xl border border-white/5 shadow-sm">
+        <div className="bg-[#111214] p-1 rounded-lg border border-white/10 shadow-sm flex gap-1">
           <button
             onClick={() => setActiveTab("overview")}
             className={cn(
-              "px-5 py-2 rounded-lg text-sm font-bold transition-all flex items-center gap-2",
+              "px-4 py-2 rounded-md text-sm font-medium transition-all flex items-center gap-2",
               activeTab === "overview"
-                ? "bg-[#5865F2] text-white shadow-md"
+                ? "bg-[#5865F2] text-white shadow-sm"
                 : "text-gray-400 hover:text-white hover:bg-white/5"
             )}
           >
-            <BarChart3 className="w-4 h-4" /> Overview
+            <BarChart3 className="w-4 h-4" /> Übersicht
           </button>
           <button
             onClick={() => setActiveTab("settings")}
             className={cn(
-              "px-5 py-2 rounded-lg text-sm font-bold transition-all flex items-center gap-2",
+              "px-4 py-2 rounded-md text-sm font-medium transition-all flex items-center gap-2",
               activeTab === "settings"
-                ? "bg-[#5865F2] text-white shadow-md"
+                ? "bg-[#5865F2] text-white shadow-sm"
                 : "text-gray-400 hover:text-white hover:bg-white/5"
             )}
           >
-            <Settings2 className="w-4 h-4" /> Config & Editor
+            <Settings2 className="w-4 h-4" /> Konfiguration
           </button>
         </div>
       </div>
 
       {/* OVERVIEW TAB */}
       {activeTab === "overview" && (
-        <div className="space-y-6">
-          {/* STATS ROW (Neu!) */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 animate-in fade-in slide-in-from-top-4 duration-500">
+        <div className="space-y-6 animate-in fade-in slide-in-from-top-2 duration-300">
+          {/* STATS ROW */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
              <StatsCard title="Tickets Gesamt" value={stats.total} icon={Inbox} colorClass="text-blue-400" />
              <StatsCard title="Aktuell Offen" value={stats.open} icon={MessageSquare} colorClass="text-green-400" />
              <StatsCard title="Neu (7 Tage)" value={stats.thisWeek} icon={CalendarDays} colorClass="text-orange-400" />
@@ -638,20 +807,21 @@ export default function TicketsPage() {
 
           <div className="grid grid-cols-1 xl:grid-cols-[380px_1fr] gap-6 h-[calc(100vh-320px)] min-h-[600px]">
             {/* Ticket List */}
-            <Card className="bg-[#111214] border-white/5 flex flex-col overflow-hidden shadow-xl">
-              <CardHeader className="bg-[#1a1b1e] border-b border-white/5 py-4">
-                <CardTitle className="text-white text-base flex justify-between items-center">
+            <Card className="bg-[#111214] border-white/10 flex flex-col overflow-hidden shadow-sm rounded-lg">
+              <CardHeader className="bg-[#16171a] border-b border-white/10 py-3.5 px-4">
+                <CardTitle className="text-white text-sm font-bold flex justify-between items-center">
                   <span>Offene Tickets</span>
-                  <span className="bg-[#5865F2] text-xs px-2 py-0.5 rounded-full">
+                  <span className="bg-[#5865F2] text-white text-[10px] px-2 py-0.5 rounded-full">
                     {openTickets.length}
                   </span>
                 </CardTitle>
               </CardHeader>
 
-              <div className="flex-1 overflow-y-auto p-3 space-y-2">
+              <div className="flex-1 overflow-y-auto p-2 space-y-1">
                 {openTickets.length === 0 && (
-                  <div className="text-center text-gray-500 py-10 text-sm">
-                    Keine offenen Tickets.
+                  <div className="flex flex-col items-center justify-center h-full text-gray-500 gap-2">
+                    <CheckCircle2 className="w-8 h-8 opacity-20" />
+                    <p className="text-sm">Alles erledigt!</p>
                   </div>
                 )}
 
@@ -660,18 +830,18 @@ export default function TicketsPage() {
                     key={t._id}
                     onClick={() => onSelectTicket(t)}
                     className={cn(
-                      "w-full text-left p-3 rounded-xl border transition-all group",
+                      "w-full text-left p-3 rounded-md border transition-all group",
                       selectedTicketId === t._id
                         ? "border-[#5865F2] bg-[#5865F2]/10"
-                        : "border-white/5 bg-black/20 hover:border-white/10 hover:bg-white/5"
+                        : "border-transparent bg-transparent hover:bg-white/5 hover:border-white/5"
                     )}
                   >
-                    <div className="text-white font-bold truncate text-sm group-hover:text-[#5865F2] transition-colors">
+                    <div className="text-white font-medium truncate text-sm group-hover:text-[#5865F2] transition-colors">
                       {t.issue || "No Subject"}
                     </div>
                     <div className="text-xs text-gray-400 mt-1 flex justify-between">
                       <span>{t.userTag}</span>
-                      <span className="text-gray-600">{new Date(t.createdAt).toLocaleDateString()}</span>
+                      <span className="text-gray-600 font-mono text-[10px]">{new Date(t.createdAt).toLocaleDateString()}</span>
                     </div>
                   </button>
                 ))}
@@ -679,34 +849,36 @@ export default function TicketsPage() {
             </Card>
 
             {/* Chat View */}
-            <Card className="bg-[#111214] border-white/5 flex flex-col shadow-xl">
+            <Card className="bg-[#111214] border-white/10 flex flex-col shadow-sm rounded-lg">
               {!selectedTicket ? (
                 <div className="m-auto text-gray-500 flex flex-col items-center gap-3">
-                  <MessageSquare className="w-12 h-12 opacity-20" />
-                  <p>Wähle ein Ticket aus, um den Chat zu sehen.</p>
+                  <div className="p-4 bg-white/5 rounded-full">
+                    <MessageSquare className="w-8 h-8 opacity-40" />
+                  </div>
+                  <p className="text-sm">Wähle ein Ticket aus, um den Chat zu laden.</p>
                 </div>
               ) : (
                 <>
-                  <div className="bg-[#1a1b1e] border-b border-white/5 p-4 flex justify-between items-center">
+                  <div className="bg-[#16171a] border-b border-white/10 p-4 flex justify-between items-center">
                     <div className="font-bold text-white flex items-center gap-2">
-                      <span className="text-[#5865F2]">#</span> {selectedTicket.issue}
+                      <Hash className="w-4 h-4 text-gray-500" /> {selectedTicket.issue}
                     </div>
-                    <div className="text-xs text-gray-500">ID: {selectedTicket.channelId}</div>
+                    <div className="text-[10px] font-mono text-gray-600 bg-black/30 px-2 py-1 rounded">ID: {selectedTicket.channelId}</div>
                   </div>
 
-                  <div className="flex-1 overflow-hidden relative">
+                  <div className="flex-1 overflow-hidden relative bg-[#1e1f22]/50">
                     <div ref={chatScrollRef} className="absolute inset-0 overflow-y-auto p-4 space-y-4">
                       {messages.map((m, i) => (
                         <div key={i} className="group flex gap-3 hover:bg-white/[0.02] p-2 rounded-lg -mx-2 transition-colors">
-                          <div className="w-8 h-8 rounded-full bg-[#5865F2] flex items-center justify-center text-white font-bold text-xs shrink-0">
+                          <div className="w-9 h-9 rounded-full bg-[#5865F2] flex items-center justify-center text-white font-bold text-xs shrink-0 shadow-sm">
                             {m.authorTag?.charAt(0).toUpperCase()}
                           </div>
                           <div>
                             <div className="flex items-baseline gap-2">
-                              <span className="font-bold text-gray-200 text-sm">{m.authorTag}</span>
-                              <span className="text-[10px] text-gray-500">{new Date(m.timestamp).toLocaleString()}</span>
+                              <span className="font-bold text-gray-100 text-sm">{m.authorTag}</span>
+                              <span className="text-[10px] text-gray-500 font-mono">{new Date(m.timestamp).toLocaleString()}</span>
                             </div>
-                            <div className="text-sm text-gray-300 mt-0.5 whitespace-pre-wrap leading-relaxed">
+                            <div className="text-[14px] text-gray-300 mt-1 whitespace-pre-wrap leading-relaxed">
                               <DiscordMarkdown text={m.content} />
                             </div>
                           </div>
@@ -715,7 +887,7 @@ export default function TicketsPage() {
                     </div>
                   </div>
 
-                  <div className="p-4 bg-[#1a1b1e] border-t border-white/5">
+                  <div className="p-4 bg-[#16171a] border-t border-white/10">
                     <div className="flex gap-2">
                       <Input
                         value={replyText}
@@ -724,9 +896,9 @@ export default function TicketsPage() {
                           if (e.key === "Enter" && !e.shiftKey) sendReply();
                         }}
                         placeholder={`Antworte an ${selectedTicket.userTag}...`}
-                        className="bg-black/40 border-white/10 text-white focus-visible:ring-[#5865F2]"
+                        className="bg-[#111214] border-white/10 text-white focus-visible:ring-[#5865F2] h-10"
                       />
-                      <Button onClick={sendReply} className="bg-[#5865F2] hover:bg-[#4752C4]">
+                      <Button onClick={sendReply} className="bg-[#5865F2] hover:bg-[#4752C4] h-10 w-10 p-0">
                         <Send className="w-4 h-4" />
                       </Button>
                     </div>
@@ -738,293 +910,137 @@ export default function TicketsPage() {
         </div>
       )}
 
-      {/* SETTINGS TAB (unverändert) */}
+      {/* CONFIGURATION & EDITOR TAB (UNIFIED) */}
       {activeTab === "settings" && (
-        <div className="relative">
-          {/* GRID: rechts nur Platzhalter */}
-          <div className="grid grid-cols-1 xl:grid-cols-[1fr_480px] gap-8 items-start">
-            {/* Left Column Content */}
-            <div className="space-y-8">
-              {/* General Config */}
-              <Card className="bg-[#111214] border-white/5 shadow-lg">
-                <CardHeader className="pb-4 border-b border-white/5">
-                  <CardTitle className="text-white text-lg flex items-center gap-2">
-                    <Settings2 className="w-5 h-5 text-[#5865F2]" /> System Configuration
-                  </CardTitle>
-                  <CardDescription className="text-gray-400">
-                    Lege fest, wo Tickets erstellt und archiviert werden.
-                  </CardDescription>
-                </CardHeader>
-
-                <CardContent className="p-6 space-y-5">
-                  <form onSubmit={saveSettings} className="space-y-5">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                      <ChannelSelect
-                        label="Ticket Kategorie (Open)"
-                        value={settings.ticketCategoryId}
-                        onChange={(v) => setSettings({ ...settings, ticketCategoryId: v })}
-                        channels={channels}
-                        typeFilter={4}
-                        placeholder="Kategorie wählen..."
-                      />
-                      <ChannelSelect
-                        label="Log Channel (Transcripts)"
-                        value={settings.logChannelId}
-                        onChange={(v) => setSettings({ ...settings, logChannelId: v })}
-                        channels={channels}
-                        typeFilter={0}
-                        placeholder="#logs wählen..."
-                      />
-                      <ChannelSelect
-                        label="Panel Channel (Wo User klicken)"
-                        value={settings.panelChannelId}
-                        onChange={(v) => setSettings({ ...settings, panelChannelId: v })}
-                        channels={channels}
-                        typeFilter={0}
-                        placeholder="#tickets wählen..."
-                      />
-                      <RoleSelect
-                        label="Support Team Rolle"
-                        value={settings.supportRoleId}
-                        onChange={(v) => setSettings({ ...settings, supportRoleId: v })}
-                        roles={roles}
-                        placeholder="@Support wählen..."
-                      />
-                    </div>
-
-                    <div className="pt-2 flex justify-end">
-                      <Button
-                        type="submit"
-                        disabled={savingSettings}
-                        className="bg-[#2b2d31] text-white hover:bg-[#5865F2] hover:text-white transition-all border border-white/10"
-                      >
-                        {savingSettings ? (
-                          <RefreshCw className="w-4 h-4 animate-spin mr-2" />
-                        ) : (
-                          <Save className="w-4 h-4 mr-2" />
-                        )}
-                        Einstellungen Speichern
-                      </Button>
-                    </div>
-                  </form>
-                </CardContent>
-              </Card>
-
-              {/* Form & Panel Editor */}
-              <Card className="bg-[#111214] border-white/5 shadow-lg relative overflow-hidden">
-                <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-[#5865F2] to-purple-500 opacity-80" />
-                <CardHeader className="pb-4 border-b border-white/5 flex flex-row items-center justify-between bg-[#151619]">
+        <div className="relative animate-in fade-in slide-in-from-top-2 duration-300">
+          <div className="grid grid-cols-1 xl:grid-cols-[1fr_500px] gap-8 items-start">
+            
+            {/* Main Configuration Card */}
+            <Card className="bg-[#111214] border-white/10 shadow-sm rounded-lg overflow-hidden flex flex-col w-full">
+              
+              {/* Card Header with Tabs & Actions */}
+              <div className="bg-[#16171a] border-b border-white/10 px-6 pt-4 pb-0 flex flex-col gap-4">
+                <div className="flex flex-row items-center justify-between">
                   <div>
-                    <CardTitle className="text-white text-lg flex items-center gap-2">
-                      <PenTool className="w-5 h-5 text-purple-400" /> Ticket Editor
-                    </CardTitle>
-                    <CardDescription className="text-gray-400">
-                      Setup des Panels, Modals und der Antwort.
-                    </CardDescription>
+                    <h2 className="text-white text-lg font-bold flex items-center gap-2">
+                      Konfiguration & Design
+                    </h2>
                   </div>
-
                   <div className="flex gap-2">
-                    <Button
+                     <Button
                       size="sm"
                       variant="ghost"
-                      onClick={resetTicketFormToBotDefault}
-                      className="text-red-400 hover:text-red-300 hover:bg-red-400/10"
+                      onClick={handleReset}
+                      className="text-gray-400 hover:text-white hover:bg-white/5 h-8 text-xs font-medium"
                     >
-                      <History className="w-4 h-4 mr-1" /> Reset
+                      <History className="w-3.5 h-3.5 mr-1.5" /> Reset
                     </Button>
-
                     <Button
                       size="sm"
-                      onClick={saveTicketForm}
-                      disabled={formSaving}
-                      className="bg-[#5865F2] hover:bg-[#4752C4] text-white"
+                      onClick={handleSave}
+                      disabled={saving}
+                      className="bg-[#5865F2] hover:bg-[#4752C4] text-white h-8 text-xs font-bold px-4 rounded-md shadow-sm"
                     >
-                      {formSaving ? (
-                        <RefreshCw className="w-4 h-4 animate-spin mr-2" />
+                      {saving ? (
+                        <RefreshCw className="w-3.5 h-3.5 animate-spin mr-1.5" />
                       ) : (
-                        <Save className="w-4 h-4 mr-2" />
+                        <Save className="w-3.5 h-3.5 mr-1.5" />
                       )}
-                      Save
+                      Speichern
                     </Button>
                   </div>
-                </CardHeader>
+                </div>
 
-                <CardContent className="p-0">
-                  {formMsg && (
-                    <div className="m-4 px-4 py-2 bg-green-500/10 border border-green-500/20 text-green-400 rounded-lg text-sm flex items-center gap-2 animate-in fade-in slide-in-from-top-2">
-                      ✓ {formMsg}
+                {/* Tabs Row */}
+                <div className="flex gap-6 overflow-x-auto mt-2 no-scrollbar">
+                  {[
+                    { id: "config", label: "Konfiguration", icon: Settings2 },
+                    { id: "panel", label: "Panel Design", icon: LayoutTemplate },
+                    { id: "modal", label: "Formular", icon: MousePointerClick },
+                    { id: "response", label: "Antwort", icon: MessageSquare }
+                  ].map((tab) => (
+                    <button
+                      key={tab.id}
+                      onClick={() => setEditorTab(tab.id)}
+                      className={cn(
+                        "pb-3 text-sm font-medium border-b-[2px] transition-all flex items-center gap-2 whitespace-nowrap",
+                        editorTab === tab.id
+                          ? "border-[#5865F2] text-white"
+                          : "border-transparent text-gray-500 hover:text-gray-300 hover:border-white/10"
+                      )}
+                    >
+                      <tab.icon className={cn("w-4 h-4", editorTab === tab.id ? "text-[#5865F2]" : "text-gray-500")} />
+                      {tab.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <CardContent className="p-0 bg-[#111214]">
+                {formMsg && (
+                  <div className="mx-6 mt-4 px-4 py-3 bg-green-500/10 border border-green-500/20 text-green-400 rounded-md text-sm flex items-center gap-2">
+                    <CheckCircle2 className="w-4 h-4" /> {formMsg}
+                  </div>
+                )}
+
+                <div className="p-6 min-h-[500px]">
+                  
+                  {/* TAB: GENERAL CONFIG */}
+                  {editorTab === "config" && (
+                    <div className="space-y-4 animate-in fade-in slide-in-from-left-2 duration-300">
+                      <div className="bg-blue-500/5 border border-blue-500/10 rounded-md p-4 mb-6 flex gap-3">
+                         <AlertCircle className="w-5 h-5 text-blue-400 shrink-0" />
+                         <div className="text-sm text-gray-300 leading-relaxed">
+                            Definiere hier die grundlegenden Kanäle und Rollen für das Ticket-System.
+                         </div>
+                      </div>
+
+                      <CollapsibleSection title="Allgemeine Einstellungen" icon={Settings2}>
+                         <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                            <ChannelSelect
+                              label="Ticket Kategorie (Offen)"
+                              value={settings.ticketCategoryId}
+                              onChange={(v) => setSettings({ ...settings, ticketCategoryId: v })}
+                              channels={channels}
+                              typeFilter={4}
+                              placeholder="Kategorie wählen..."
+                            />
+                            <ChannelSelect
+                              label="Log Channel (Transcripts)"
+                              value={settings.logChannelId}
+                              onChange={(v) => setSettings({ ...settings, logChannelId: v })}
+                              channels={channels}
+                              typeFilter={0}
+                              placeholder="#logs wählen..."
+                            />
+                            <ChannelSelect
+                              label="Panel Channel (Ticket Erstellung)"
+                              value={settings.panelChannelId}
+                              onChange={(v) => setSettings({ ...settings, panelChannelId: v })}
+                              channels={channels}
+                              typeFilter={0}
+                              placeholder="#tickets wählen..."
+                            />
+                            <RoleSelect
+                              label="Support Team Rolle"
+                              value={settings.supportRoleId}
+                              onChange={(v) => setSettings({ ...settings, supportRoleId: v })}
+                              roles={roles}
+                              placeholder="@Support wählen..."
+                            />
+                         </div>
+                      </CollapsibleSection>
                     </div>
                   )}
 
-                  <div className="bg-[#1a1b1e] border-b border-white/5 px-6 pt-4">
-                    <div className="flex gap-6 overflow-x-auto">
-                      <button
-                        onClick={() => setEditorTab("modal")}
-                        className={cn(
-                          "pb-3 text-sm font-bold border-b-2 transition-all flex items-center gap-2 whitespace-nowrap",
-                          editorTab === "modal"
-                            ? "border-[#5865F2] text-white"
-                            : "border-transparent text-gray-400 hover:text-gray-200"
-                        )}
-                      >
-                        <MousePointerClick className="w-4 h-4" /> Modal Setup
-                      </button>
-
-                      <button
-                        onClick={() => setEditorTab("response")}
-                        className={cn(
-                          "pb-3 text-sm font-bold border-b-2 transition-all flex items-center gap-2 whitespace-nowrap",
-                          editorTab === "response"
-                            ? "border-[#5865F2] text-white"
-                            : "border-transparent text-gray-400 hover:text-gray-200"
-                        )}
-                      >
-                        <MessageSquare className="w-4 h-4" /> Bot Antwort
-                      </button>
-
-                      <button
-                        onClick={() => setEditorTab("panel")}
-                        className={cn(
-                          "pb-3 text-sm font-bold border-b-2 transition-all flex items-center gap-2 whitespace-nowrap",
-                          editorTab === "panel"
-                            ? "border-[#5865F2] text-white"
-                            : "border-transparent text-gray-400 hover:text-gray-200"
-                        )}
-                      >
-                        <LayoutTemplate className="w-4 h-4" /> Panel Nachricht
-                      </button>
-                    </div>
-                  </div>
-
-                  <div className="p-6 min-h-[400px]">
-                    {editorTab === "modal" && <ModalBuilder data={modal} onChange={setModal} />}
-
-                    {editorTab === "response" && (
-                      <div className="space-y-6 animate-in fade-in slide-in-from-left-2 duration-300">
-                        <div className="grid grid-cols-2 gap-4">
-                          <div
-                            onClick={() => setResponse((r) => ({ ...r, type: "text" }))}
-                            className={cn(
-                              "cursor-pointer border rounded-xl p-3 flex flex-col items-center gap-2 transition-all hover:bg-white/5",
-                              response.type === "text"
-                                ? "border-[#5865F2] bg-[#5865F2]/10"
-                                : "border-white/10 bg-[#1e1f22]"
-                            )}
-                          >
-                            <div className={cn("p-2 rounded-full", response.type === "text" ? "bg-[#5865F2] text-white" : "bg-black/40 text-gray-400")}>
-                              <Type className="w-5 h-5" />
-                            </div>
-                            <span className={cn("text-xs font-bold uppercase tracking-wider", response.type === "text" ? "text-white" : "text-gray-400")}>
-                              Nur Text
-                            </span>
-                          </div>
-
-                          <div
-                            onClick={() => setResponse((r) => ({ ...r, type: "embed" }))}
-                            className={cn(
-                              "cursor-pointer border rounded-xl p-3 flex flex-col items-center gap-2 transition-all hover:bg-white/5",
-                              response.type === "embed"
-                                ? "border-[#5865F2] bg-[#5865F2]/10"
-                                : "border-white/10 bg-[#1e1f22]"
-                            )}
-                          >
-                            <div className={cn("p-2 rounded-full", response.type === "embed" ? "bg-[#5865F2] text-white" : "bg-black/40 text-gray-400")}>
-                              <LayoutTemplate className="w-5 h-5" />
-                            </div>
-                            <span className={cn("text-xs font-bold uppercase tracking-wider", response.type === "embed" ? "text-white" : "text-gray-400")}>
-                              Embed
-                            </span>
-                          </div>
-                        </div>
-
-                        <div className="flex items-center gap-2 bg-[#1e1f22] p-1.5 rounded-lg border border-white/5 overflow-x-auto">
-                          <Code2 className="w-4 h-4 text-gray-500 ml-2" />
-                          <div className="h-4 w-[1px] bg-white/10 mx-1"></div>
-
-                          {["{user}", "{username}", "{server}", "{channel}"].map((v) => (
-                            <button
-                              key={v}
-                              onClick={() =>
-                                insertVarIntoResponseField(
-                                  response.type === "text" ? "text" : "embed.description",
-                                  v
-                                )
-                              }
-                              className="px-2 py-1 bg-black/40 rounded text-[10px] font-mono text-gray-300 hover:text-white hover:bg-[#5865F2] transition-colors whitespace-nowrap"
-                            >
-                              {v}
-                            </button>
-                          ))}
-
-                          <div className="flex-1"></div>
-
-                          <div className="flex items-center gap-1">
-                            <Input
-                              value={varCustomId}
-                              onChange={(e) => setVarCustomId(e.target.value)}
-                              placeholder="Field ID"
-                              className="h-6 w-20 text-[10px] bg-black/20 border-white/10 px-1"
-                            />
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              onClick={() => {
-                                if (varCustomId) {
-                                  insertVarIntoResponseField(
-                                    response.type === "text" ? "text" : "embed.description",
-                                    `{field:${varCustomId}}`
-                                  );
-                                }
-                              }}
-                              className="h-6 px-2 text-[10px]"
-                            >
-                              Add
-                            </Button>
-                          </div>
-                        </div>
-
-                        {response.type === "text" && (
-                          <div className="space-y-2">
-                            <textarea
-                              value={response.text || ""}
-                              onChange={(e) => setResponse((r) => ({ ...r, text: e.target.value }))}
-                              className="w-full h-40 bg-[#1e1f22] border border-white/10 rounded-lg p-3 text-white outline-none focus:border-[#5865F2] transition-colors resize-none leading-relaxed text-sm font-mono"
-                              placeholder="Deine Nachricht hier..."
-                            />
-                          </div>
-                        )}
-
-                        {response.type === "embed" && (
-                          <div className="space-y-4">
-                            <div>
-                              <Label className="text-[10px] text-gray-400 uppercase font-bold mb-1.5 block ml-1">
-                                Zusätzliche Nachricht
-                              </Label>
-                              <Input
-                                value={response.content || ""}
-                                onChange={(e) => setResponse((r) => ({ ...r, content: e.target.value }))}
-                                placeholder="Optionaler Text über dem Embed..."
-                                className="bg-[#1e1f22] border-white/10 text-white focus-visible:ring-[#5865F2]"
-                              />
-                            </div>
-
-                            <div className="pt-2 border-t border-white/5">
-                              <EmbedBuilder
-                                data={response.embed}
-                                onChange={(e) => setResponse({ ...response, embed: e })}
-                              />
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    )}
-
-                    {editorTab === "panel" && (
-                      <div className="space-y-6 animate-in fade-in slide-in-from-left-2 duration-300">
-                        <div className="bg-[#1e1f22] p-4 rounded-xl border border-white/5 space-y-4">
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div className="space-y-1.5">
-                              <Label className="text-[10px] text-gray-400 uppercase font-bold mb-1.5 block ml-1">
+                  {/* TAB: PANEL DESIGN */}
+                  {editorTab === "panel" && (
+                    <div className="space-y-6 animate-in fade-in slide-in-from-left-2 duration-300">
+                      
+                      <CollapsibleSection title="Button Konfiguration" icon={Palette}>
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                            <div className="space-y-2">
+                              <Label className="text-[11px] text-gray-400 uppercase font-bold">
                                 Button Text
                               </Label>
                               <Input
@@ -1032,17 +1048,17 @@ export default function TicketsPage() {
                                 onChange={(e) =>
                                   setSettings({ ...settings, panelButtonText: e.target.value })
                                 }
-                                placeholder="Standard (2 Buttons für Sprache)"
+                                placeholder="Standard"
                                 className="bg-[#111214] border-white/10 text-white focus-visible:ring-[#5865F2]"
                               />
-                              <p className="text-[10px] text-gray-500 mt-1 ml-1">
-                                Lasse leer für Standard (Sprachauswahl).
+                              <p className="text-[10px] text-gray-600">
+                                Leer lassen für Standard (Sprachauswahl).
                               </p>
                             </div>
 
-                            <div className="space-y-1.5">
+                            <div className="space-y-2">
                               <DiscordSelect
-                                label="Button Style"
+                                label="Button Farbe"
                                 value={settings.panelButtonStyle || "Primary"}
                                 onChange={(v) =>
                                   setSettings({ ...settings, panelButtonStyle: v })
@@ -1058,49 +1074,148 @@ export default function TicketsPage() {
                               />
                             </div>
                           </div>
-                        </div>
+                      </CollapsibleSection>
 
-                        <div className="pt-2 border-t border-white/5">
-                          <EmbedBuilder
-                            data={settings.panelEmbed}
-                            onChange={(e) => setSettings({ ...settings, panelEmbed: e })}
-                            hiddenSections={["author", "fields"]}
-                          />
-                        </div>
+                      <EmbedBuilder
+                          data={settings.panelEmbed}
+                          onChange={(e) => setSettings({ ...settings, panelEmbed: e })}
+                          hiddenSections={["author", "fields"]}
+                        />
+                    </div>
+                  )}
 
-                        <div className="pt-4 flex justify-end">
-                          <Button onClick={saveSettings} className="bg-[#5865F2] hover:bg-[#4752C4] text-white">
-                            {savingSettings ? (
-                              <RefreshCw className="w-4 h-4 animate-spin mr-2" />
-                            ) : (
-                              <Save className="w-4 h-4 mr-2" />
-                            )}
-                            Panel & Settings Speichern
-                          </Button>
-                        </div>
+                  {/* TAB: MODAL EDITOR */}
+                  {editorTab === "modal" && (
+                    <div className="animate-in fade-in slide-in-from-left-2 duration-300">
+                       <ModalBuilder data={modal} onChange={setModal} />
+                    </div>
+                  )}
+
+                  {/* TAB: BOT RESPONSE - REDESIGNED */}
+                  {editorTab === "response" && (
+                    <div className="space-y-6 animate-in fade-in slide-in-from-left-2 duration-300">
+                      
+                      {/* TYPE SELECTION */}
+                      <CollapsibleSection title="Nachrichtentyp" icon={Sparkles} defaultOpen={true}>
+                          <div className="flex gap-4">
+                             <button 
+                                onClick={() => setResponse(r => ({...r, type: 'text'}))}
+                                className={cn(
+                                   "flex-1 p-4 rounded-lg border text-left transition-all hover:bg-white/5 flex gap-3 items-center",
+                                   response.type === 'text' ? "border-[#5865F2] bg-[#5865F2]/10" : "border-white/10 bg-[#1e1f22]"
+                                )}
+                             >
+                                <div className="p-2 bg-black/40 rounded-md text-gray-400">
+                                   <Type className="w-5 h-5" />
+                                </div>
+                                <div>
+                                   <div className="text-white font-bold text-sm">Nur Text</div>
+                                   <div className="text-gray-400 text-xs">Klassische Nachricht ohne Formatierung.</div>
+                                </div>
+                                {response.type === 'text' && <CheckCircle2 className="w-5 h-5 text-[#5865F2] ml-auto" />}
+                             </button>
+
+                             <button 
+                                onClick={() => setResponse(r => ({...r, type: 'embed'}))}
+                                className={cn(
+                                   "flex-1 p-4 rounded-lg border text-left transition-all hover:bg-white/5 flex gap-3 items-center",
+                                   response.type === 'embed' ? "border-[#5865F2] bg-[#5865F2]/10" : "border-white/10 bg-[#1e1f22]"
+                                )}
+                             >
+                                <div className="p-2 bg-black/40 rounded-md text-gray-400">
+                                   <LayoutTemplate className="w-5 h-5" />
+                                </div>
+                                <div>
+                                   <div className="text-white font-bold text-sm">Embed Nachricht</div>
+                                   <div className="text-gray-400 text-xs">Professionelles Layout mit Farben & Feldern.</div>
+                                </div>
+                                {response.type === 'embed' && <CheckCircle2 className="w-5 h-5 text-[#5865F2] ml-auto" />}
+                             </button>
+                          </div>
+                      </CollapsibleSection>
+
+                      {/* VARIABLES DROPDOWN (NEW) */}
+                      <div className="bg-[#1e1f22] p-3 rounded-md border border-white/10 flex flex-wrap md:flex-nowrap items-center gap-4 justify-between">
+                          <div className="flex items-center gap-2">
+                             <span className="text-xs font-bold text-gray-400 uppercase tracking-wider flex items-center gap-2">
+                                <Code2 className="w-3 h-3" /> Variablen
+                             </span>
+                             <div className="h-4 w-[1px] bg-white/10 mx-2"></div>
+                             <p className="text-[10px] text-gray-500">
+                                Wähle eine Variable, um sie zu kopieren und in deine Nachricht einzufügen.
+                             </p>
+                          </div>
+                          
+                          <VariableDropdown modal={modal} />
                       </div>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
+
+                      {/* EDITOR AREA */}
+                      <CollapsibleSection title="Nachricht bearbeiten" icon={FileText} defaultOpen={true}>
+                          {response.type === "text" && (
+                            <div className="space-y-2">
+                              <textarea
+                                value={response.text || ""}
+                                onChange={(e) => setResponse((r) => ({ ...r, text: e.target.value }))}
+                                className="w-full h-64 bg-[#111214] border border-white/10 rounded-md p-4 text-white outline-none focus:border-[#5865F2] transition-colors resize-none leading-relaxed text-sm font-mono custom-scrollbar"
+                                placeholder="Schreibe hier deine Nachricht..."
+                              />
+                            </div>
+                          )}
+
+                          {response.type === "embed" && (
+                            <div className="space-y-6">
+                              <div>
+                                <Label className="text-[11px] text-gray-400 uppercase font-bold mb-2 block">
+                                  Text über dem Embed (Optional)
+                                </Label>
+                                <Input
+                                  value={response.content || ""}
+                                  onChange={(e) => setResponse((r) => ({ ...r, content: e.target.value }))}
+                                  placeholder="Z.B.: Hallo {user}, danke für dein Ticket!"
+                                  className="bg-[#111214] border-white/10 text-white focus-visible:ring-[#5865F2]"
+                                />
+                              </div>
+
+                              <div className="pt-4 border-t border-white/5">
+                                <EmbedBuilder
+                                  data={response.embed}
+                                  onChange={(e) => setResponse({ ...response, embed: e })}
+                                />
+                              </div>
+                            </div>
+                          )}
+                      </CollapsibleSection>
+
+                    </div>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
 
             {/* Platzhalter rechts, damit Grid-Spalte reserviert bleibt */}
             <div className="hidden xl:block" />
           </div>
 
-          {/* LIVE PREVIEW: FIXED + immer mittig im VIEWPORT */}
+          {/* LIVE PREVIEW: FIXED SIDEBAR */}
           <div className="hidden xl:block fixed top-[calc(50%+40px)] -translate-y-1/2 right-10 w-[480px] z-50">
 
-            <div className="bg-[#0f1012] border border-white/10 rounded-2xl p-5 shadow-2xl ring-1 ring-white/5 max-h-[calc(100vh-4rem)] overflow-y-auto custom-scrollbar">
-              <div className="text-gray-400 font-bold text-xs uppercase tracking-wider border-b border-white/5 pb-3 mb-4 flex items-center gap-2">
-                <div className="" /> Live Preview
+            <div className="bg-[#111214] border border-white/10 rounded-lg p-5 shadow-2xl ring-1 ring-white/5 max-h-[calc(100vh-6rem)] overflow-y-auto custom-scrollbar">
+              <div className="text-gray-400 font-bold text-xs uppercase tracking-wider border-b border-white/5 pb-3 mb-4 flex items-center justify-between">
+                <span>Live Preview</span>
+                <span className="text-[10px] bg-white/5 px-2 py-0.5 rounded text-gray-500">
+                    {editorTab === "config" ? "Allgemein" : editorTab === "modal" ? "Formular" : editorTab === "response" ? "Bot Antwort" : "Panel"}
+                </span>
               </div>
 
               {editorTab === "modal" && <ModalPreview modal={modal} guildIconUrl={guildIconUrl} />}
+              {editorTab === "config" && (
+                 <div className="text-center py-20 text-gray-500 italic text-sm">
+                    Wähle einen Design-Tab für Vorschau.
+                 </div>
+              )}
 
               {editorTab === "response" && (
-                <div className="bg-[#313338] rounded-xl p-4 transition-all duration-300">
+                <div className="bg-[#313338] rounded-md p-4 transition-all duration-300">
                   {response.type === "text" ? (
                     <div className="flex gap-4 group items-start">
                       <div className="shrink-0 cursor-pointer mt-0.5">
@@ -1150,7 +1265,7 @@ export default function TicketsPage() {
               )}
 
               {editorTab === "panel" && (
-                <div className="bg-[#313338] rounded-xl p-4 transition-all duration-300">
+                <div className="bg-[#313338] rounded-md p-4 transition-all duration-300">
                   <EmbedPreview
                     embed={{
                       ...settings?.panelEmbed,
@@ -1179,8 +1294,6 @@ export default function TicketsPage() {
                   </EmbedPreview>
                 </div>
               )}
-
-        
             </div>
           </div>
         </div>
