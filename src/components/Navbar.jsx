@@ -8,12 +8,12 @@ import {
   LayoutDashboard, 
   LogOut, 
   ChevronDown, 
-  Settings, // Neu
-  X,        // Neu
-  Globe,    // Neu
-  Monitor,  // Neu
-  Palette,  // Neu
-  Check     // Neu
+  Settings, 
+  X,        
+  Globe,    
+  Monitor,  
+  Palette,  
+  Check     
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { openLoginPopup } from "@/lib/loginPopup";
@@ -25,7 +25,7 @@ function cn(...classes) {
 export default function Navbar() {
   const { data: session } = useSession();
   const [isOpen, setIsOpen] = useState(false);
-  const [showSettings, setShowSettings] = useState(false); // State für das Modal
+  const [showSettings, setShowSettings] = useState(false); 
   const dropdownRef = useRef(null);
 
   // Fake-States für die Settings-Vorschau
@@ -57,15 +57,24 @@ export default function Navbar() {
           </Link>
 
           <div>
-            {session ? (
+            {/* HIER WAR DER FEHLER: Wir prüfen jetzt sicher auf session UND session.user */}
+            {session?.user ? (
               <div className="relative" ref={dropdownRef}>
                 <button 
                   onClick={() => setIsOpen(!isOpen)}
                   className="flex items-center gap-3 py-1.5 transition-opacity hover:opacity-80 group"
                 >
-                  <img src={session.user.image} alt="" className="w-8 h-8 rounded-lg border border-white/10" />
+                  {/* Sicherer Bild-Fallback: Wenn kein Bild da ist, zeige Initiale */}
+                  {session.user.image ? (
+                    <img src={session.user.image} alt="" className="w-8 h-8 rounded-lg border border-white/10" />
+                  ) : (
+                    <div className="w-8 h-8 rounded-lg border border-white/10 bg-indigo-500/20 flex items-center justify-center text-white text-xs font-bold">
+                      {session.user.name?.charAt(0) || "?"}
+                    </div>
+                  )}
+                  
                   <span className="font-semibold text-sm text-gray-300 hidden md:block">
-                    {session.user.name}
+                    {session.user.name || "User"}
                   </span>
                   <ChevronDown className={`w-4 h-4 text-gray-500 transition-transform ${isOpen ? "rotate-180" : ""}`} />
                 </button>
@@ -74,7 +83,7 @@ export default function Navbar() {
                   <div className="absolute right-0 mt-3 w-60 rounded-2xl bg-[#1a1b1e]/95 backdrop-blur-2xl border border-white/10 shadow-2xl py-2 animate-in fade-in zoom-in-95 duration-200 z-50">
                     <div className="px-4 py-3 border-b border-white/5 mb-1">
                       <p className="text-[10px] text-indigo-400 font-bold uppercase tracking-widest mb-0.5">Sitzung</p>
-                      <p className="text-sm font-bold text-white truncate">{session.user.name}</p>
+                      <p className="text-sm font-bold text-white truncate">{session.user.name || "User"}</p>
                     </div>
                     
                     <div className="p-1.5 space-y-1">
@@ -85,7 +94,7 @@ export default function Navbar() {
                           </div>
                       </Link>
 
-                      {/* --- NEU: SETTINGS BUTTON --- */}
+                      {/* Settings Button */}
                       <button 
                           onClick={() => { setIsOpen(false); setShowSettings(true); }}
                           className="w-full text-left px-3 py-2 text-sm text-gray-300 hover:bg-[#5865F2] hover:text-white cursor-pointer flex items-center gap-3 transition-all rounded-xl font-medium"
