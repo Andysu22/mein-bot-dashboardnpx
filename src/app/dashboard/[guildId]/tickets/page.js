@@ -1,12 +1,11 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import {
   MessageSquare,
   Settings2,
   RefreshCw,
   Save,
-  Send,
   History,
   LayoutTemplate,
   Type,
@@ -24,10 +23,11 @@ import {
   Inbox,
   CheckCircle2,
   AlertCircle,
-  FileText,
-  Sparkles,
-  Copy,
-  ClipboardCheck
+  Minimize2,
+  Maximize2,
+  GripHorizontal,
+  Eye,
+  X
 } from "lucide-react";
 import { useParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
@@ -49,9 +49,6 @@ import DiscordMarkdown from "@/components/builders/shared/DiscordMarkdown";
 function cn(...xs) {
   return xs.filter(Boolean).join(" ");
 }
-function safeStr(v) {
-  return String(v ?? "");
-}
 function truncate(s, max) {
   const str = String(s ?? "");
   return str.length > max ? str.slice(0, max - 1) + "…" : str;
@@ -65,7 +62,7 @@ function CollapsibleSection({ title, icon: Icon, children, defaultOpen = true })
 
   useEffect(() => {
     if (isOpen) {
-      const timer = setTimeout(() => setIsAnimationDone(true), 300); // Warte auf Transition
+      const timer = setTimeout(() => setIsAnimationDone(true), 300); 
       return () => clearTimeout(timer);
     } else {
       setIsAnimationDone(false);
@@ -105,10 +102,9 @@ function CollapsibleSection({ title, icon: Icon, children, defaultOpen = true })
 // --- Variable Dropdown Helper ---
 function VariableDropdown({ modal }) {
   const [isOpen, setIsOpen] = useState(false);
-  const [copyFeedback, setCopyFeedback] = useState(null); // null or string (the copied value)
+  const [copyFeedback, setCopyFeedback] = useState(null); 
   const containerRef = useRef(null);
 
-  // Standard Variables
   const standardVars = [
     { label: "User Mention", value: "{user}", desc: "Erwähnt den User (@User)" },
     { label: "Username", value: "{username}", desc: "Name des Users" },
@@ -117,7 +113,6 @@ function VariableDropdown({ modal }) {
     { label: "Ticket ID", value: "{ticket_id}", desc: "Nummer des Tickets (z.B. 004)" },
   ];
 
-  // Dynamic Variables from Modal Components
   const formVars = (modal?.components || []).map(c => ({
     label: c.label || "Unbenanntes Feld",
     value: `{field:${c.custom_id || "unknown"}}`,
@@ -134,40 +129,62 @@ function VariableDropdown({ modal }) {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  const handleCopy = (val) => {
-    navigator.clipboard.writeText(val);
-    setCopyFeedback(val);
-    setIsOpen(false);
-    setTimeout(() => setCopyFeedback(null), 2000);
+  const copyToClipboard = async (text) => {
+    try {
+      if (navigator.clipboard && window.isSecureContext) {
+        await navigator.clipboard.writeText(text);
+      } else {
+        const textArea = document.createElement("textarea");
+        textArea.value = text;
+        textArea.style.position = "fixed";
+        textArea.style.left = "-9999px";
+        document.body.appendChild(textArea);
+        textArea.focus();
+        textArea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textArea);
+      }
+      return true;
+    } catch (err) {
+      console.error("Copy failed", err);
+      return false;
+    }
+  };
+
+  const handleCopy = async (val) => {
+    const success = await copyToClipboard(val);
+    if (success) {
+      setCopyFeedback(val);
+      setIsOpen(false);
+      setTimeout(() => setCopyFeedback(null), 2000);
+    }
   };
 
   return (
-    <div className="relative w-full md:w-auto" ref={containerRef}>
+    <div className="relative inline-block text-left" ref={containerRef}>
       <button
         type="button"
         onClick={() => setIsOpen(!isOpen)}
         className={cn(
-            "flex items-center gap-2 px-3 py-2 rounded-md border text-xs font-bold uppercase tracking-wider transition-all min-w-[200px] justify-between",
+            "flex items-center gap-2 px-4 py-2 rounded-md border text-xs font-bold uppercase tracking-wider transition-all min-w-[140px] md:min-w-[180px] justify-between h-9 w-full md:w-auto",
             copyFeedback 
                 ? "bg-green-500/10 border-green-500/50 text-green-400" 
-                : "bg-[#1e1f22] border-white/10 text-gray-300 hover:border-[#5865F2] hover:text-white"
+                : "bg-[#111214] border-white/10 text-gray-300 hover:border-[#5865F2] hover:text-white"
         )}
       >
-        <div className="flex items-center gap-2">
-            {copyFeedback ? <ClipboardCheck className="w-4 h-4" /> : <Code2 className="w-4 h-4" />}
-            <span>{copyFeedback ? "Kopiert!" : "Variable kopieren"}</span>
+        <div className="flex items-center gap-2 truncate">
+            {copyFeedback ? <Check className="w-3.5 h-3.5" /> : <Code2 className="w-3.5 h-3.5" />}
+            <span className="truncate">{copyFeedback ? "Kopiert!" : "Variablen"}</span>
         </div>
-        <ChevronDown className={cn("w-3 h-3 transition-transform", isOpen && "rotate-180")} />
+        <ChevronDown className={cn("w-3 h-3 transition-transform shrink-0", isOpen && "rotate-180")} />
       </button>
 
       {isOpen && (
-        <div className="absolute top-full left-0 mt-2 z-50 w-[280px] bg-[#1e1f22] border border-white/10 rounded-lg shadow-2xl overflow-hidden animate-in fade-in slide-in-from-top-1 duration-100 max-h-[400px] overflow-y-auto custom-scrollbar">
-            
-            {/* Standard Vars Group */}
-            <div className="px-3 py-2 text-[10px] font-bold text-gray-500 uppercase bg-[#111214] border-b border-white/5 sticky top-0">
-                Standard
+        <div className="absolute top-full right-0 mt-2 z-50 w-[280px] md:w-[300px] bg-[#1e1f22] border border-white/10 rounded-lg shadow-2xl overflow-hidden animate-in fade-in slide-in-from-top-1 duration-100 max-h-[400px] overflow-y-auto custom-scrollbar ring-1 ring-black/50">
+            <div className="px-3 py-2 text-[10px] font-bold text-gray-500 uppercase bg-[#111214] border-b border-white/5 sticky top-0 flex justify-between items-center">
+                <span>Standard</span>
             </div>
-            <div className="p-1">
+            <div className="p-1 space-y-0.5">
                 {standardVars.map((v) => (
                     <button
                         key={v.value}
@@ -183,13 +200,12 @@ function VariableDropdown({ modal }) {
                 ))}
             </div>
 
-            {/* Form Vars Group */}
             {formVars.length > 0 && (
                 <>
-                    <div className="px-3 py-2 text-[10px] font-bold text-gray-500 uppercase bg-[#111214] border-y border-white/5 sticky top-0">
+                    <div className="px-3 py-2 text-[10px] font-bold text-gray-500 uppercase bg-[#111214] border-y border-white/5 sticky top-0 mt-1">
                         Formular Felder
                     </div>
-                    <div className="p-1">
+                    <div className="p-1 space-y-0.5">
                         {formVars.map((v) => (
                             <button
                                 key={v.value}
@@ -197,7 +213,7 @@ function VariableDropdown({ modal }) {
                                 className="w-full text-left px-3 py-2 rounded-[4px] hover:bg-[#5865F2] hover:text-white group transition-colors flex flex-col gap-0.5"
                             >
                                 <div className="flex items-center justify-between">
-                                    <span className="font-mono text-xs font-bold text-gray-200 group-hover:text-white truncate max-w-[180px]">{v.value}</span>
+                                    <span className="font-mono text-xs font-bold text-gray-200 group-hover:text-white truncate max-w-[200px]">{v.value}</span>
                                     <Copy className="w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity" />
                                 </div>
                                 <span className="text-[10px] text-gray-500 group-hover:text-white/80 truncate">{v.desc}</span>
@@ -212,8 +228,6 @@ function VariableDropdown({ modal }) {
   );
 }
 
-
-// --- STATS CARD COMPONENT ---
 function StatsCard({ title, value, icon: Icon, colorClass = "text-white" }) {
   return (
     <Card className="bg-[#111214] border-white/10 shadow-sm flex items-center p-4 gap-4 rounded-lg hover:border-white/20 transition-colors">
@@ -227,8 +241,6 @@ function StatsCard({ title, value, icon: Icon, colorClass = "text-white" }) {
     </Card>
   );
 }
-
-// --- COMPONENTS ---
 
 function DiscordButton({ label, emoji, style = "Primary" }) {
   const styles = {
@@ -390,8 +402,6 @@ const RoleSelect = ({ label, value, onChange, roles, placeholder }) => {
   );
 };
 
-// --- BUILDER HELPERS ---
-
 function buildTicketBotCode(modal) {
   const payload = {
     v: 1,
@@ -429,7 +439,14 @@ function buildTicketBotCode(modal) {
 
       if (c.kind === "file_upload") return { ...base };
 
-      return { ...base, k: "text_input", s: 1 };
+      // Für User/Role/Channel Selects: "mx" statt "mxv"
+      return { 
+          ...base, 
+          k: c.kind, 
+          s: 1, 
+          mn: c.min_values || 1, 
+          mx: c.max_values || 1 
+      };
     }),
   };
 
@@ -503,7 +520,7 @@ export default function TicketsPage() {
   const { guildId } = useParams();
 
   const [activeTab, setActiveTab] = useState("overview");
-  const [editorTab, setEditorTab] = useState("config"); // config, panel, modal, response
+  const [editorTab, setEditorTab] = useState("config"); 
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(null);
 
@@ -527,6 +544,63 @@ export default function TicketsPage() {
   const [chatLoading, setChatLoading] = useState(false);
   const [replyText, setReplyText] = useState("");
   const chatScrollRef = useRef(null);
+
+  // --- UI STATE ---
+  const [isPreviewMinimized, setIsPreviewMinimized] = useState(false);
+  const [showMobilePreview, setShowMobilePreview] = useState(false);
+  
+  // DRAG STATE & HANDLERS
+  const [previewY, setPreviewY] = useState(0); 
+  const [isDragging, setIsDragging] = useState(false); 
+  const dragStartRef = useRef(0);
+
+  const handleDragStart = (e) => {
+    setIsDragging(true); 
+    dragStartRef.current = e.clientY - previewY;
+    document.body.style.userSelect = "none"; 
+  };
+
+  const handleDragMove = useCallback((e) => {
+    // Safety check: Don't run on server
+    if (typeof window === 'undefined') return;
+
+    let newY = e.clientY - dragStartRef.current;
+    
+    // Dynamic Boundary Calculation
+    // Assuming start position is "50% + 120px"
+    const windowHeight = window.innerHeight;
+    const startPos = (windowHeight / 2) + 120;
+    
+    // Limits
+    const maxUp = 80 - startPos; // 80px from top
+    const maxDown = windowHeight - 50 - startPos; // 50px from bottom
+
+    // Clamp
+    if (newY < maxUp) newY = maxUp;
+    if (newY > maxDown) newY = maxDown;
+
+    setPreviewY(newY);
+  }, []);
+
+  const handleDragEnd = useCallback(() => {
+    setIsDragging(false); 
+    document.body.style.userSelect = "";
+  }, []);
+
+  useEffect(() => {
+    if (isDragging) {
+        window.addEventListener("mousemove", handleDragMove);
+        window.addEventListener("mouseup", handleDragEnd);
+    } else {
+        window.removeEventListener("mousemove", handleDragMove);
+        window.removeEventListener("mouseup", handleDragEnd);
+    }
+    return () => {
+        window.removeEventListener("mousemove", handleDragMove);
+        window.removeEventListener("mouseup", handleDragEnd);
+    };
+  }, [isDragging, handleDragMove, handleDragEnd]);
+
 
   const openTickets = useMemo(() => (tickets || []).filter((t) => t.status === "open"), [tickets]);
 
@@ -563,7 +637,11 @@ export default function TicketsPage() {
         if (!sRes.ok) throw new Error(`Fehler (${sRes.status})`);
 
         const settingsData = await sRes.json();
+        
         if (!settingsData.panelEmbed) settingsData.panelEmbed = defaultPanelEmbed();
+        if (settingsData.panelEmbed && !Array.isArray(settingsData.panelEmbed.fields)) {
+            settingsData.panelEmbed.fields = [];
+        }
         setSettings(settingsData);
 
         if (tRes.ok) setTickets(await tRes.json());
@@ -583,6 +661,13 @@ export default function TicketsPage() {
 
         if (bd?.response) {
           let r = bd.response;
+          
+          if (!r.embed) {
+             r.embed = { fields: [] };
+          } else if (!Array.isArray(r.embed.fields)) {
+             r.embed.fields = [];
+          }
+
           if (!r.embed.footer && r.embed.footerText) r.embed.footer = { text: r.embed.footerText, icon_url: "" };
           if (r.type === "default") r.type = "embed";
           setResponse(r);
@@ -633,12 +718,10 @@ export default function TicketsPage() {
     } catch {}
   }
 
-  // --- SAVE LOGIC (CONTEXT AWARE) ---
   async function handleSave() {
     setSaving(true);
     try {
       if (editorTab === "config") {
-        // Speichere NUR Einstellungen
         const r = await fetch(`/api/settings/${guildId}`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -648,7 +731,6 @@ export default function TicketsPage() {
         else throw new Error();
       } 
       else if (editorTab === "panel") {
-         // Speichere NUR Panel Settings
          const r = await fetch(`/api/settings/${guildId}`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -658,7 +740,6 @@ export default function TicketsPage() {
         else throw new Error();
       }
       else if (editorTab === "modal" || editorTab === "response") {
-        // Speichere Formular & Bot
         const pl = {
           mode: "custom",
           version: 1,
@@ -682,7 +763,6 @@ export default function TicketsPage() {
     }
   }
 
-  // --- RESET LOGIC (CONTEXT AWARE) ---
   async function handleReset() {
     if (!window.confirm("Bist du sicher? Dies setzt den aktuellen Bereich zurück.")) return;
     setSaving(true);
@@ -746,7 +826,7 @@ export default function TicketsPage() {
     : "https://cdn.discordapp.com/embed/avatars/0.png";
 
   return (
-    <div className="p-6 xl:p-10 mx-auto w-full max-w-[1920px] space-y-8 font-sans">
+    <div className="p-2 sm:p-6 xl:p-10 mx-auto w-full max-w-[1920px] space-y-8 font-sans">
       <style jsx global>{`
         .discord-md strong { font-weight: 700; color: #fff; }
         .discord-md .inlinecode {
@@ -758,7 +838,7 @@ export default function TicketsPage() {
       `}</style>
 
       {/* HEADER */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b border-white/10 pb-6">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b border-white/10 pb-6 px-2 sm:px-0">
         <div>
           <h1 className="text-2xl font-bold text-white tracking-tight flex items-center gap-3">
             <Inbox className="w-8 h-8 text-[#5865F2]" />
@@ -768,11 +848,11 @@ export default function TicketsPage() {
             Verwalte Support-Tickets, konfiguriere das Design und den Ablauf.
           </p>
         </div>
-        <div className="bg-[#111214] p-1 rounded-lg border border-white/10 shadow-sm flex gap-1">
+        <div className="bg-[#111214] p-1 rounded-lg border border-white/10 shadow-sm flex gap-1 w-full md:w-auto overflow-x-auto no-scrollbar">
           <button
             onClick={() => setActiveTab("overview")}
             className={cn(
-              "px-4 py-2 rounded-md text-sm font-medium transition-all flex items-center gap-2",
+              "px-4 py-2 rounded-md text-sm font-medium transition-all flex items-center gap-2 whitespace-nowrap",
               activeTab === "overview"
                 ? "bg-[#5865F2] text-white shadow-sm"
                 : "text-gray-400 hover:text-white hover:bg-white/5"
@@ -783,7 +863,7 @@ export default function TicketsPage() {
           <button
             onClick={() => setActiveTab("settings")}
             className={cn(
-              "px-4 py-2 rounded-md text-sm font-medium transition-all flex items-center gap-2",
+              "px-4 py-2 rounded-md text-sm font-medium transition-all flex items-center gap-2 whitespace-nowrap",
               activeTab === "settings"
                 ? "bg-[#5865F2] text-white shadow-sm"
                 : "text-gray-400 hover:text-white hover:bg-white/5"
@@ -796,8 +876,7 @@ export default function TicketsPage() {
 
       {/* OVERVIEW TAB */}
       {activeTab === "overview" && (
-        <div className="space-y-6 animate-in fade-in slide-in-from-top-2 duration-300">
-          {/* STATS ROW */}
+        <div className="space-y-6 animate-in fade-in slide-in-from-top-2 duration-300 px-2 sm:px-0">
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
              <StatsCard title="Tickets Gesamt" value={stats.total} icon={Inbox} colorClass="text-blue-400" />
              <StatsCard title="Aktuell Offen" value={stats.open} icon={MessageSquare} colorClass="text-green-400" />
@@ -805,9 +884,8 @@ export default function TicketsPage() {
              <StatsCard title="Geschlossen" value={stats.closed} icon={CheckCircle2} colorClass="text-purple-400" />
           </div>
 
-          <div className="grid grid-cols-1 xl:grid-cols-[380px_1fr] gap-6 h-[calc(100vh-320px)] min-h-[600px]">
-            {/* Ticket List */}
-            <Card className="bg-[#111214] border-white/10 flex flex-col overflow-hidden shadow-sm rounded-lg">
+          <div className="grid grid-cols-1 xl:grid-cols-[380px_1fr] gap-6 h-auto xl:h-[calc(100vh-320px)] min-h-[600px]">
+            <Card className="bg-[#111214] border-white/10 flex flex-col overflow-hidden shadow-sm rounded-lg h-[400px] xl:h-auto">
               <CardHeader className="bg-[#16171a] border-b border-white/10 py-3.5 px-4">
                 <CardTitle className="text-white text-sm font-bold flex justify-between items-center">
                   <span>Offene Tickets</span>
@@ -848,8 +926,7 @@ export default function TicketsPage() {
               </div>
             </Card>
 
-            {/* Chat View */}
-            <Card className="bg-[#111214] border-white/10 flex flex-col shadow-sm rounded-lg">
+            <Card className="bg-[#111214] border-white/10 flex flex-col shadow-sm rounded-lg h-[600px] xl:h-auto">
               {!selectedTicket ? (
                 <div className="m-auto text-gray-500 flex flex-col items-center gap-3">
                   <div className="p-4 bg-white/5 rounded-full">
@@ -910,391 +987,385 @@ export default function TicketsPage() {
         </div>
       )}
 
-      {/* CONFIGURATION & EDITOR TAB (UNIFIED) */}
+      {/* CONFIGURATION & EDITOR TAB */}
       {activeTab === "settings" && (
         <div className="relative animate-in fade-in slide-in-from-top-2 duration-300">
-          <div className="grid grid-cols-1 xl:grid-cols-[1fr_500px] gap-8 items-start">
+          <div className="flex flex-col xl:flex-row w-full items-start gap-8 relative">
             
-            {/* Main Configuration Card */}
-            <Card className="bg-[#111214] border-white/10 shadow-sm rounded-lg overflow-hidden flex flex-col w-full">
-              
-              {/* Card Header with Tabs & Actions */}
-              <div className="bg-[#16171a] border-b border-white/10 px-6 pt-4 pb-0 flex flex-col gap-4">
-                <div className="flex flex-row items-center justify-between">
-                  <div>
-                    <h2 className="text-white text-lg font-bold flex items-center gap-2">
-                      Konfiguration & Design
-                    </h2>
+            {/* LINKER BEREICH: MAIN CONTENT */}
+            <div className="w-full xl:flex-1 min-w-0 transition-all duration-500 ease-in-out">
+                
+                {/* --- FIX: overflow-hidden removed here --- */}
+                <Card className={cn(
+                  "bg-[#111214] border-white/10 shadow-sm rounded-lg flex flex-col z-10 relative transition-all duration-500 ease-in-out",
+                  editorTab === "config" ? "w-full xl:w-[85%]" : "w-full"
+                )}>
+                  
+                  {/* Card Header */}
+                  <div className="bg-[#16171a] border-b border-white/10 px-6 pt-4 pb-0 flex flex-col gap-4 rounded-t-lg">
+                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                      <div>
+                        <h2 className="text-white text-lg font-bold flex items-center gap-2">
+                          Konfiguration & Design
+                        </h2>
+                      </div>
+                      <div className="flex gap-2 w-full sm:w-auto">
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={handleReset}
+                          className="text-gray-400 hover:text-white hover:bg-white/5 h-8 text-xs font-medium flex-1 sm:flex-none"
+                        >
+                          <History className="w-3.5 h-3.5 mr-1.5" /> Reset
+                        </Button>
+                        <Button
+                          size="sm"
+                          onClick={handleSave}
+                          disabled={saving}
+                          className="bg-[#5865F2] hover:bg-[#4752C4] text-white h-8 text-xs font-bold px-4 rounded-md shadow-sm flex-1 sm:flex-none"
+                        >
+                          {saving ? (
+                            <RefreshCw className="w-3.5 h-3.5 animate-spin mr-1.5" />
+                          ) : (
+                            <Save className="w-3.5 h-3.5 mr-1.5" />
+                          )}
+                          Speichern
+                        </Button>
+                      </div>
+                    </div>
+
+                    {/* Tabs Row */}
+                    <div className="flex gap-6 overflow-x-auto mt-2 no-scrollbar pb-1">
+                      {[
+                        { id: "config", label: "Konfiguration", icon: Settings2 },
+                        { id: "panel", label: "Panel Design", icon: LayoutTemplate },
+                        { id: "modal", label: "Formular", icon: MousePointerClick },
+                        { id: "response", label: "Antwort", icon: MessageSquare }
+                      ].map((tab) => (
+                        <button
+                          key={tab.id}
+                          onClick={() => setEditorTab(tab.id)}
+                          className={cn(
+                            "pb-3 text-sm font-medium border-b-[2px] transition-all flex items-center gap-2 whitespace-nowrap shrink-0",
+                            editorTab === tab.id
+                              ? "border-[#5865F2] text-white"
+                              : "border-transparent text-gray-500 hover:text-gray-300 hover:border-white/10"
+                          )}
+                        >
+                          <tab.icon className={cn("w-4 h-4", editorTab === tab.id ? "text-[#5865F2]" : "text-gray-500")} />
+                          {tab.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <CardContent className="p-0 bg-[#111214] rounded-b-lg">
+                    {formMsg && (
+                      <div className="mx-6 mt-4 px-4 py-3 bg-green-500/10 border border-green-500/20 text-green-400 rounded-md text-sm flex items-center gap-2">
+                        <CheckCircle2 className="w-4 h-4" /> {formMsg}
+                      </div>
+                    )}
+
+                    <div className="p-4 sm:p-6 min-h-[500px]">
+                      
+                      {/* CONFIG TABS */}
+                      {editorTab === "config" && (
+                        <div className="space-y-4 animate-in fade-in slide-in-from-left-2 duration-300">
+                          <div className="bg-blue-500/5 border border-blue-500/10 rounded-md p-4 mb-6 flex gap-3">
+                            <AlertCircle className="w-5 h-5 text-blue-400 shrink-0" />
+                            <div className="text-sm text-gray-300 leading-relaxed">
+                                Definiere hier die grundlegenden Kanäle und Rollen für das Ticket-System.
+                            </div>
+                          </div>
+
+                          <CollapsibleSection title="Allgemeine Einstellungen" icon={Settings2}>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                                <ChannelSelect
+                                  label="Ticket Kategorie (Offen)"
+                                  value={settings.ticketCategoryId}
+                                  onChange={(v) => setSettings({ ...settings, ticketCategoryId: v })}
+                                  channels={channels}
+                                  typeFilter={4}
+                                  placeholder="Kategorie wählen..."
+                                />
+                                <ChannelSelect
+                                  label="Log Channel (Transcripts)"
+                                  value={settings.logChannelId}
+                                  onChange={(v) => setSettings({ ...settings, logChannelId: v })}
+                                  channels={channels}
+                                  typeFilter={0}
+                                  placeholder="#logs wählen..."
+                                />
+                                <ChannelSelect
+                                  label="Panel Channel (Ticket Erstellung)"
+                                  value={settings.panelChannelId}
+                                  onChange={(v) => setSettings({ ...settings, panelChannelId: v })}
+                                  channels={channels}
+                                  typeFilter={0}
+                                  placeholder="#tickets wählen..."
+                                />
+                                <RoleSelect
+                                  label="Support Team Rolle"
+                                  value={settings.supportRoleId}
+                                  onChange={(v) => setSettings({ ...settings, supportRoleId: v })}
+                                  roles={roles}
+                                  placeholder="@Support wählen..."
+                                />
+                            </div>
+                          </CollapsibleSection>
+                        </div>
+                      )}
+
+                      {editorTab === "panel" && (
+                        <div className="space-y-6 animate-in fade-in slide-in-from-left-2 duration-300">
+                          <CollapsibleSection title="Button Konfiguration" icon={Palette}>
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                                <div className="space-y-2">
+                                  <Label className="text-[11px] text-gray-400 uppercase font-bold">
+                                    Button Text
+                                  </Label>
+                                  <Input
+                                    value={settings.panelButtonText || ""}
+                                    onChange={(e) =>
+                                      setSettings({ ...settings, panelButtonText: e.target.value })
+                                    }
+                                    placeholder="Standard"
+                                    className="bg-[#111214] border-white/10 text-white focus-visible:ring-[#5865F2]"
+                                  />
+                                </div>
+                                <div className="space-y-2">
+                                  <DiscordSelect
+                                    label="Button Farbe"
+                                    value={settings.panelButtonStyle || "Primary"}
+                                    onChange={(v) =>
+                                      setSettings({ ...settings, panelButtonStyle: v })
+                                    }
+                                    options={[
+                                      { label: "Primary (Blurple)", value: "Primary" },
+                                      { label: "Secondary (Grey)", value: "Secondary" },
+                                      { label: "Success (Green)", value: "Success" },
+                                      { label: "Danger (Red)", value: "Danger" },
+                                    ]}
+                                    placeholder="Style wählen..."
+                                    icon={Palette}
+                                  />
+                                </div>
+                              </div>
+                          </CollapsibleSection>
+                          <EmbedBuilder
+                              data={settings.panelEmbed}
+                              onChange={(e) => setSettings({ ...settings, panelEmbed: e })}
+                              hiddenSections={["author", "fields"]}
+                            />
+                        </div>
+                      )}
+
+                      {editorTab === "modal" && (
+                        <div className="animate-in fade-in slide-in-from-left-2 duration-300">
+                          <ModalBuilder data={modal} onChange={setModal} />
+                        </div>
+                      )}
+
+                      {editorTab === "response" && (
+                        <div className="space-y-6 animate-in fade-in slide-in-from-left-2 duration-300">
+                          <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center gap-4 border-b border-white/5 pb-6">
+                              <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 w-full sm:w-auto">
+                                  <span className="text-xs font-bold text-gray-500 uppercase tracking-wider shrink-0">Nachrichtentyp</span>
+                                  <div className="flex bg-[#16171a] p-1 rounded-md border border-white/10 w-full sm:w-auto">
+                                      <button 
+                                          onClick={() => setResponse(r => ({...r, type: 'text'}))}
+                                          className={cn(
+                                              "flex-1 sm:flex-none px-4 py-1.5 rounded-sm text-xs font-bold transition-all flex items-center justify-center gap-2",
+                                              response.type === 'text' ? "bg-[#5865F2] text-white shadow-sm" : "text-gray-400 hover:text-white hover:bg-white/5"
+                                          )}
+                                      >
+                                          <Type className="w-3 h-3" /> Text
+                                      </button>
+                                      <button 
+                                          onClick={() => setResponse(r => ({...r, type: 'embed'}))}
+                                          className={cn(
+                                              "flex-1 sm:flex-none px-4 py-1.5 rounded-sm text-xs font-bold transition-all flex items-center justify-center gap-2",
+                                              response.type === 'embed' ? "bg-[#5865F2] text-white shadow-sm" : "text-gray-400 hover:text-white hover:bg-white/5"
+                                          )}
+                                      >
+                                          <LayoutTemplate className="w-3 h-3" /> Embed
+                                      </button>
+                                  </div>
+                              </div>
+                              <div className="w-full xl:w-auto">
+                                  <VariableDropdown modal={modal} />
+                              </div>
+                          </div>
+
+                          <div className="animate-in fade-in slide-in-from-bottom-2 duration-300">
+                              {response.type === "text" && (
+                                <div className="space-y-2">
+                                  <textarea
+                                    value={response.text || ""}
+                                    onChange={(e) => setResponse((r) => ({ ...r, text: e.target.value }))}
+                                    className="w-full h-64 bg-[#111214] border border-white/10 rounded-md p-4 text-white outline-none focus:border-[#5865F2] transition-colors resize-none leading-relaxed text-sm font-mono custom-scrollbar"
+                                    placeholder="Schreibe hier deine Nachricht..."
+                                  />
+                                </div>
+                              )}
+
+                              {response.type === "embed" && (
+                                <div className="space-y-6">
+                                  <div>
+                                    <Label className="text-[11px] text-gray-400 uppercase font-bold mb-2 block">
+                                      Text über dem Embed (Optional)
+                                    </Label>
+                                    <Input
+                                      value={response.content || ""}
+                                      onChange={(e) => setResponse((r) => ({ ...r, content: e.target.value }))}
+                                      placeholder="Z.B.: Hallo {user}, danke für dein Ticket!"
+                                      className="bg-[#111214] border-white/10 text-white focus-visible:ring-[#5865F2]"
+                                    />
+                                  </div>
+
+                                  <div className="pt-4 border-t border-white/5">
+                                    <EmbedBuilder
+                                      data={response.embed}
+                                      onChange={(e) => setResponse({ ...response, embed: e })}
+                                    />
+                                  </div>
+                                </div>
+                              )}
+                          </div>
+
+                        </div>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+            </div>
+
+            {/* SPACER */}
+            <div className={cn(
+               "shrink-0 transition-all duration-500 ease-in-out hidden xl:block",
+               editorTab === "config" || isPreviewMinimized ? "w-0" : "w-[600px]"
+            )} />
+
+            {/* PREVIEW MAXIMIZED */}
+            <div 
+                style={{ top: isPreviewMinimized ? '-9999px' : `calc(50% + ${120 + previewY}px)` }}
+                className={cn(
+                    "hidden xl:block fixed -translate-y-1/2 right-10 w-[600px] z-50 origin-top-right scale-[0.85]",
+                    isDragging ? "transition-none" : "transition-all duration-300 ease-in-out",
+                    (editorTab === "config" && !isPreviewMinimized) 
+                        ? "translate-x-[120%] opacity-0 pointer-events-none" 
+                        : "translate-x-0 opacity-100"
+                )}
+            >
+              <div className="bg-[#111214] border border-white/10 rounded-lg shadow-2xl ring-1 ring-white/5 overflow-hidden flex flex-col max-h-[calc(100vh-6rem)]">
+                <div 
+                    onMouseDown={handleDragStart}
+                    className="bg-[#1e1f22] border-b border-white/5 p-3 flex items-center justify-between cursor-grab active:cursor-grabbing select-none"
+                >
+                  <div className="flex items-center gap-2">
+                     <GripHorizontal className="w-4 h-4 text-gray-600" />
+                     <span className="text-gray-400 font-bold text-xs uppercase tracking-wider">Live Preview</span>
                   </div>
                   <div className="flex gap-2">
-                     <Button
-                      size="sm"
-                      variant="ghost"
-                      onClick={handleReset}
-                      className="text-gray-400 hover:text-white hover:bg-white/5 h-8 text-xs font-medium"
-                    >
-                      <History className="w-3.5 h-3.5 mr-1.5" /> Reset
-                    </Button>
-                    <Button
-                      size="sm"
-                      onClick={handleSave}
-                      disabled={saving}
-                      className="bg-[#5865F2] hover:bg-[#4752C4] text-white h-8 text-xs font-bold px-4 rounded-md shadow-sm"
-                    >
-                      {saving ? (
-                        <RefreshCw className="w-3.5 h-3.5 animate-spin mr-1.5" />
-                      ) : (
-                        <Save className="w-3.5 h-3.5 mr-1.5" />
-                      )}
-                      Speichern
-                    </Button>
+                      <span className="text-[10px] bg-white/5 px-2 py-0.5 rounded text-gray-500">
+                          {editorTab === "config" ? "Allgemein" : editorTab === "modal" ? "Formular" : editorTab === "response" ? "Bot Antwort" : "Panel"}
+                      </span>
+                      <button onClick={() => setIsPreviewMinimized(true)} className="text-gray-500 hover:text-white transition-colors">
+                         <Minimize2 className="w-4 h-4" />
+                      </button>
                   </div>
                 </div>
 
-                {/* Tabs Row */}
-                <div className="flex gap-6 overflow-x-auto mt-2 no-scrollbar">
-                  {[
-                    { id: "config", label: "Konfiguration", icon: Settings2 },
-                    { id: "panel", label: "Panel Design", icon: LayoutTemplate },
-                    { id: "modal", label: "Formular", icon: MousePointerClick },
-                    { id: "response", label: "Antwort", icon: MessageSquare }
-                  ].map((tab) => (
-                    <button
-                      key={tab.id}
-                      onClick={() => setEditorTab(tab.id)}
-                      className={cn(
-                        "pb-3 text-sm font-medium border-b-[2px] transition-all flex items-center gap-2 whitespace-nowrap",
-                        editorTab === tab.id
-                          ? "border-[#5865F2] text-white"
-                          : "border-transparent text-gray-500 hover:text-gray-300 hover:border-white/10"
-                      )}
-                    >
-                      <tab.icon className={cn("w-4 h-4", editorTab === tab.id ? "text-[#5865F2]" : "text-gray-500")} />
-                      {tab.label}
-                    </button>
-                  ))}
+                <div className="p-5 overflow-y-auto custom-scrollbar">
+                    {editorTab === "modal" && <ModalPreview modal={modal} guildIconUrl={guildIconUrl} />}
+                    {editorTab === "config" && <div className="text-center py-20 text-gray-500 italic text-sm">Einstellungen...</div>}
+                    {editorTab === "response" && (
+                    <div className="bg-[#313338] rounded-md p-4 transition-all duration-300">
+                        {response.type === "text" ? (
+                        <div className="flex gap-4 group items-start">
+                            <div className="shrink-0 cursor-pointer mt-0.5">
+                            <img src={guildIconUrl} alt="Bot" className="w-10 h-10 rounded-full hover:opacity-80 transition shadow-sm bg-[#1e1f22]" />
+                            </div>
+                            <div className="flex flex-col text-left w-full min-w-0">
+                            <div className="flex items-center gap-2 mb-0.5">
+                                <span className="text-white font-medium hover:underline cursor-pointer">Ticket Bot</span>
+                                <span className="bg-[#5865F2] text-[10px] text-white px-1 rounded-[3px] flex items-center h-[15px] leading-none mt-[1px]">BOT</span>
+                                <span className="text-gray-400 text-xs ml-1">Today at {new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</span>
+                            </div>
+                            <div className="text-[#dbdee1] whitespace-pre-wrap break-words leading-relaxed text-[15px]">
+                                {response.text ? <DiscordMarkdown text={response.text} /> : <span className="text-gray-500 italic text-sm">Schreibe etwas...</span>}
+                            </div>
+                            </div>
+                        </div>
+                        ) : (
+                        <EmbedPreview
+                            embed={{ ...response.embed, thumbnail_url: response.embed.thumbnail_url === "{user_avatar}" ? "https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_1280.png" : response.embed.thumbnail_url }}
+                            content={response.content} botName="Ticket Bot" botIconUrl={guildIconUrl}
+                        />
+                        )}
+                    </div>
+                    )}
+                    {editorTab === "panel" && (
+                    <div className="bg-[#313338] rounded-md p-4 transition-all duration-300">
+                        <EmbedPreview embed={{ ...settings?.panelEmbed, image: settings?.panelEmbed?.image_url ? { url: settings.panelEmbed.image_url } : undefined }} content="" botName="Ticket System" botIconUrl={guildIconUrl}>
+                        <div className="flex gap-2 flex-wrap mt-2">
+                            {settings?.panelButtonText ? <DiscordButton label={settings.panelButtonText} emoji="📩" style={settings.panelButtonStyle} /> : <><DiscordButton label="DE" emoji="🇩🇪" /><DiscordButton label="EN" emoji="🇺🇸" /></>}
+                        </div>
+                        </EmbedPreview>
+                    </div>
+                    )}
                 </div>
               </div>
-
-              <CardContent className="p-0 bg-[#111214]">
-                {formMsg && (
-                  <div className="mx-6 mt-4 px-4 py-3 bg-green-500/10 border border-green-500/20 text-green-400 rounded-md text-sm flex items-center gap-2">
-                    <CheckCircle2 className="w-4 h-4" /> {formMsg}
-                  </div>
-                )}
-
-                <div className="p-6 min-h-[500px]">
-                  
-                  {/* TAB: GENERAL CONFIG */}
-                  {editorTab === "config" && (
-                    <div className="space-y-4 animate-in fade-in slide-in-from-left-2 duration-300">
-                      <div className="bg-blue-500/5 border border-blue-500/10 rounded-md p-4 mb-6 flex gap-3">
-                         <AlertCircle className="w-5 h-5 text-blue-400 shrink-0" />
-                         <div className="text-sm text-gray-300 leading-relaxed">
-                            Definiere hier die grundlegenden Kanäle und Rollen für das Ticket-System.
-                         </div>
-                      </div>
-
-                      <CollapsibleSection title="Allgemeine Einstellungen" icon={Settings2}>
-                         <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                            <ChannelSelect
-                              label="Ticket Kategorie (Offen)"
-                              value={settings.ticketCategoryId}
-                              onChange={(v) => setSettings({ ...settings, ticketCategoryId: v })}
-                              channels={channels}
-                              typeFilter={4}
-                              placeholder="Kategorie wählen..."
-                            />
-                            <ChannelSelect
-                              label="Log Channel (Transcripts)"
-                              value={settings.logChannelId}
-                              onChange={(v) => setSettings({ ...settings, logChannelId: v })}
-                              channels={channels}
-                              typeFilter={0}
-                              placeholder="#logs wählen..."
-                            />
-                            <ChannelSelect
-                              label="Panel Channel (Ticket Erstellung)"
-                              value={settings.panelChannelId}
-                              onChange={(v) => setSettings({ ...settings, panelChannelId: v })}
-                              channels={channels}
-                              typeFilter={0}
-                              placeholder="#tickets wählen..."
-                            />
-                            <RoleSelect
-                              label="Support Team Rolle"
-                              value={settings.supportRoleId}
-                              onChange={(v) => setSettings({ ...settings, supportRoleId: v })}
-                              roles={roles}
-                              placeholder="@Support wählen..."
-                            />
-                         </div>
-                      </CollapsibleSection>
-                    </div>
-                  )}
-
-                  {/* TAB: PANEL DESIGN */}
-                  {editorTab === "panel" && (
-                    <div className="space-y-6 animate-in fade-in slide-in-from-left-2 duration-300">
-                      
-                      <CollapsibleSection title="Button Konfiguration" icon={Palette}>
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                            <div className="space-y-2">
-                              <Label className="text-[11px] text-gray-400 uppercase font-bold">
-                                Button Text
-                              </Label>
-                              <Input
-                                value={settings.panelButtonText || ""}
-                                onChange={(e) =>
-                                  setSettings({ ...settings, panelButtonText: e.target.value })
-                                }
-                                placeholder="Standard"
-                                className="bg-[#111214] border-white/10 text-white focus-visible:ring-[#5865F2]"
-                              />
-                              <p className="text-[10px] text-gray-600">
-                                Leer lassen für Standard (Sprachauswahl).
-                              </p>
-                            </div>
-
-                            <div className="space-y-2">
-                              <DiscordSelect
-                                label="Button Farbe"
-                                value={settings.panelButtonStyle || "Primary"}
-                                onChange={(v) =>
-                                  setSettings({ ...settings, panelButtonStyle: v })
-                                }
-                                options={[
-                                  { label: "Primary (Blurple)", value: "Primary" },
-                                  { label: "Secondary (Grey)", value: "Secondary" },
-                                  { label: "Success (Green)", value: "Success" },
-                                  { label: "Danger (Red)", value: "Danger" },
-                                ]}
-                                placeholder="Style wählen..."
-                                icon={Palette}
-                              />
-                            </div>
-                          </div>
-                      </CollapsibleSection>
-
-                      <EmbedBuilder
-                          data={settings.panelEmbed}
-                          onChange={(e) => setSettings({ ...settings, panelEmbed: e })}
-                          hiddenSections={["author", "fields"]}
-                        />
-                    </div>
-                  )}
-
-                  {/* TAB: MODAL EDITOR */}
-                  {editorTab === "modal" && (
-                    <div className="animate-in fade-in slide-in-from-left-2 duration-300">
-                       <ModalBuilder data={modal} onChange={setModal} />
-                    </div>
-                  )}
-
-                  {/* TAB: BOT RESPONSE - REDESIGNED */}
-                  {editorTab === "response" && (
-                    <div className="space-y-6 animate-in fade-in slide-in-from-left-2 duration-300">
-                      
-                      {/* TYPE SELECTION */}
-                      <CollapsibleSection title="Nachrichtentyp" icon={Sparkles} defaultOpen={true}>
-                          <div className="flex gap-4">
-                             <button 
-                                onClick={() => setResponse(r => ({...r, type: 'text'}))}
-                                className={cn(
-                                   "flex-1 p-4 rounded-lg border text-left transition-all hover:bg-white/5 flex gap-3 items-center",
-                                   response.type === 'text' ? "border-[#5865F2] bg-[#5865F2]/10" : "border-white/10 bg-[#1e1f22]"
-                                )}
-                             >
-                                <div className="p-2 bg-black/40 rounded-md text-gray-400">
-                                   <Type className="w-5 h-5" />
-                                </div>
-                                <div>
-                                   <div className="text-white font-bold text-sm">Nur Text</div>
-                                   <div className="text-gray-400 text-xs">Klassische Nachricht ohne Formatierung.</div>
-                                </div>
-                                {response.type === 'text' && <CheckCircle2 className="w-5 h-5 text-[#5865F2] ml-auto" />}
-                             </button>
-
-                             <button 
-                                onClick={() => setResponse(r => ({...r, type: 'embed'}))}
-                                className={cn(
-                                   "flex-1 p-4 rounded-lg border text-left transition-all hover:bg-white/5 flex gap-3 items-center",
-                                   response.type === 'embed' ? "border-[#5865F2] bg-[#5865F2]/10" : "border-white/10 bg-[#1e1f22]"
-                                )}
-                             >
-                                <div className="p-2 bg-black/40 rounded-md text-gray-400">
-                                   <LayoutTemplate className="w-5 h-5" />
-                                </div>
-                                <div>
-                                   <div className="text-white font-bold text-sm">Embed Nachricht</div>
-                                   <div className="text-gray-400 text-xs">Professionelles Layout mit Farben & Feldern.</div>
-                                </div>
-                                {response.type === 'embed' && <CheckCircle2 className="w-5 h-5 text-[#5865F2] ml-auto" />}
-                             </button>
-                          </div>
-                      </CollapsibleSection>
-
-                      {/* VARIABLES DROPDOWN (NEW) */}
-                      <div className="bg-[#1e1f22] p-3 rounded-md border border-white/10 flex flex-wrap md:flex-nowrap items-center gap-4 justify-between">
-                          <div className="flex items-center gap-2">
-                             <span className="text-xs font-bold text-gray-400 uppercase tracking-wider flex items-center gap-2">
-                                <Code2 className="w-3 h-3" /> Variablen
-                             </span>
-                             <div className="h-4 w-[1px] bg-white/10 mx-2"></div>
-                             <p className="text-[10px] text-gray-500">
-                                Wähle eine Variable, um sie zu kopieren und in deine Nachricht einzufügen.
-                             </p>
-                          </div>
-                          
-                          <VariableDropdown modal={modal} />
-                      </div>
-
-                      {/* EDITOR AREA */}
-                      <CollapsibleSection title="Nachricht bearbeiten" icon={FileText} defaultOpen={true}>
-                          {response.type === "text" && (
-                            <div className="space-y-2">
-                              <textarea
-                                value={response.text || ""}
-                                onChange={(e) => setResponse((r) => ({ ...r, text: e.target.value }))}
-                                className="w-full h-64 bg-[#111214] border border-white/10 rounded-md p-4 text-white outline-none focus:border-[#5865F2] transition-colors resize-none leading-relaxed text-sm font-mono custom-scrollbar"
-                                placeholder="Schreibe hier deine Nachricht..."
-                              />
-                            </div>
-                          )}
-
-                          {response.type === "embed" && (
-                            <div className="space-y-6">
-                              <div>
-                                <Label className="text-[11px] text-gray-400 uppercase font-bold mb-2 block">
-                                  Text über dem Embed (Optional)
-                                </Label>
-                                <Input
-                                  value={response.content || ""}
-                                  onChange={(e) => setResponse((r) => ({ ...r, content: e.target.value }))}
-                                  placeholder="Z.B.: Hallo {user}, danke für dein Ticket!"
-                                  className="bg-[#111214] border-white/10 text-white focus-visible:ring-[#5865F2]"
-                                />
-                              </div>
-
-                              <div className="pt-4 border-t border-white/5">
-                                <EmbedBuilder
-                                  data={response.embed}
-                                  onChange={(e) => setResponse({ ...response, embed: e })}
-                                />
-                              </div>
-                            </div>
-                          )}
-                      </CollapsibleSection>
-
-                    </div>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Platzhalter rechts, damit Grid-Spalte reserviert bleibt */}
-            <div className="hidden xl:block" />
-          </div>
-
-          {/* LIVE PREVIEW: FIXED SIDEBAR */}
-          <div className="hidden xl:block fixed top-[calc(50%+40px)] -translate-y-1/2 right-10 w-[480px] z-50">
-
-            <div className="bg-[#111214] border border-white/10 rounded-lg p-5 shadow-2xl ring-1 ring-white/5 max-h-[calc(100vh-6rem)] overflow-y-auto custom-scrollbar">
-              <div className="text-gray-400 font-bold text-xs uppercase tracking-wider border-b border-white/5 pb-3 mb-4 flex items-center justify-between">
-                <span>Live Preview</span>
-                <span className="text-[10px] bg-white/5 px-2 py-0.5 rounded text-gray-500">
-                    {editorTab === "config" ? "Allgemein" : editorTab === "modal" ? "Formular" : editorTab === "response" ? "Bot Antwort" : "Panel"}
-                </span>
-              </div>
-
-              {editorTab === "modal" && <ModalPreview modal={modal} guildIconUrl={guildIconUrl} />}
-              {editorTab === "config" && (
-                 <div className="text-center py-20 text-gray-500 italic text-sm">
-                    Wähle einen Design-Tab für Vorschau.
-                 </div>
-              )}
-
-              {editorTab === "response" && (
-                <div className="bg-[#313338] rounded-md p-4 transition-all duration-300">
-                  {response.type === "text" ? (
-                    <div className="flex gap-4 group items-start">
-                      <div className="shrink-0 cursor-pointer mt-0.5">
-                        <img
-                          src={guildIconUrl}
-                          alt="Bot Avatar"
-                          className="w-10 h-10 rounded-full hover:opacity-80 transition shadow-sm bg-[#1e1f22]"
-                        />
-                      </div>
-                      <div className="flex flex-col text-left w-full min-w-0">
-                        <div className="flex items-center gap-2 mb-0.5">
-                          <span className="text-white font-medium hover:underline cursor-pointer">
-                            Ticket Bot
-                          </span>
-                          <span className="bg-[#5865F2] text-[10px] text-white px-1 rounded-[3px] flex items-center h-[15px] leading-none mt-[1px]">
-                            BOT
-                          </span>
-                          <span className="text-gray-400 text-xs ml-1">
-                            Today at{" "}
-                            {new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
-                          </span>
-                        </div>
-                        <div className="text-[#dbdee1] whitespace-pre-wrap break-words leading-relaxed text-[15px]">
-                          {response.text ? (
-                            <DiscordMarkdown text={response.text} />
-                          ) : (
-                            <span className="text-gray-500 italic text-sm">Schreibe etwas...</span>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  ) : (
-                    <EmbedPreview
-                      embed={{
-                        ...response.embed,
-                        thumbnail_url:
-                          response.embed.thumbnail_url === "{user_avatar}"
-                            ? "https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_1280.png"
-                            : response.embed.thumbnail_url,
-                      }}
-                      content={response.content}
-                      botName="Ticket Bot"
-                      botIconUrl={guildIconUrl}
-                    />
-                  )}
-                </div>
-              )}
-
-              {editorTab === "panel" && (
-                <div className="bg-[#313338] rounded-md p-4 transition-all duration-300">
-                  <EmbedPreview
-                    embed={{
-                      ...settings?.panelEmbed,
-                      image: settings?.panelEmbed?.image_url
-                        ? { url: settings.panelEmbed.image_url }
-                        : undefined,
-                    }}
-                    content=""
-                    botName="Ticket System"
-                    botIconUrl={guildIconUrl}
-                  >
-                    <div className="flex gap-2 flex-wrap mt-2">
-                      {settings?.panelButtonText ? (
-                        <DiscordButton
-                          label={settings.panelButtonText}
-                          emoji="📩"
-                          style={settings.panelButtonStyle}
-                        />
-                      ) : (
-                        <>
-                          <DiscordButton label="Deutsch" emoji="🇩🇪" style={settings.panelButtonStyle} />
-                          <DiscordButton label="English" emoji="🇺🇸" style={settings.panelButtonStyle} />
-                        </>
-                      )}
-                    </div>
-                  </EmbedPreview>
-                </div>
-              )}
             </div>
+
+            {/* MINIMIZED BUTTON */}
+            {isPreviewMinimized && (
+                 <button onClick={() => setIsPreviewMinimized(false)} className="hidden xl:flex fixed right-6 bottom-6 z-50 bg-[#5865F2] hover:bg-[#4752C4] text-white w-14 h-14 rounded-full shadow-2xl items-center justify-center transition-transform hover:scale-110" title="Vorschau anzeigen">
+                     <Maximize2 className="w-6 h-6" />
+                 </button>
+            )}
+
+            {/* MOBILE TOGGLE & OVERLAY */}
+            {editorTab !== "config" && (
+                <button onClick={() => setShowMobilePreview(true)} className="xl:hidden fixed right-4 bottom-4 z-40 bg-[#5865F2] hover:bg-[#4752C4] text-white w-12 h-12 rounded-full shadow-lg flex items-center justify-center active:scale-95 transition-all">
+                <Eye className="w-6 h-6" />
+                </button>
+            )}
+
+            {showMobilePreview && (
+                <div className="xl:hidden fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+                     <div className="bg-[#111214] border border-white/10 w-full max-w-md max-h-[80vh] rounded-lg shadow-2xl flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+                        <div className="flex items-center justify-between p-4 border-b border-white/10 bg-[#1e1f22]">
+                            <h3 className="text-white font-bold text-sm uppercase">Vorschau</h3>
+                            <button onClick={() => setShowMobilePreview(false)} className="text-gray-400 hover:text-white"><X className="w-5 h-5" /></button>
+                        </div>
+                        <div className="p-4 overflow-y-auto custom-scrollbar bg-[#313338]">
+                             {editorTab === "modal" && <ModalPreview modal={modal} guildIconUrl={guildIconUrl} />}
+                             {editorTab === "response" && (
+                                <div className="bg-[#313338]">
+                                    {response.type === "text" ? (
+                                        <div className="flex gap-3 group items-start">
+                                            <img src={guildIconUrl} className="w-8 h-8 rounded-full bg-[#1e1f22]" />
+                                            <div>
+                                                <div className="flex items-center gap-2"><span className="text-white font-bold text-sm">Ticket Bot</span><span className="bg-[#5865F2] text-[10px] text-white px-1 rounded">BOT</span></div>
+                                                <div className="text-gray-200 text-sm mt-1 whitespace-pre-wrap"><DiscordMarkdown text={response.text || "..."} /></div>
+                                            </div>
+                                        </div>
+                                    ) : <EmbedPreview embed={response.embed} content={response.content} botName="Ticket Bot" botIconUrl={guildIconUrl} />}
+                                </div>
+                             )}
+                             {editorTab === "panel" && (
+                                <div className="bg-[#313338]">
+                                    <EmbedPreview embed={settings?.panelEmbed} content="" botName="Ticket System" botIconUrl={guildIconUrl}>
+                                        <div className="flex gap-2 flex-wrap mt-2">{settings?.panelButtonText ? <DiscordButton label={settings.panelButtonText} emoji="📩" style={settings.panelButtonStyle} /> : <><DiscordButton label="DE" emoji="🇩🇪" /><DiscordButton label="EN" emoji="🇺🇸" /></>}</div>
+                                    </EmbedPreview>
+                                </div>
+                             )}
+                        </div>
+                     </div>
+                </div>
+            )}
+
           </div>
         </div>
       )}

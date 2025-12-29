@@ -9,6 +9,14 @@ import "./globals.css";
 
 const inter = Inter({ subsets: ["latin"] });
 
+export const metadata = {
+  title: "Mein Bot Dashboard", // Dein Titel hier
+  description: "Manage deine Community",
+  icons: {
+    icon: '/favicon.ico', // Stelle sicher, dass dein Icon so heißt
+  },
+};
+
 export default async function RootLayout({ children }) {
   const session = await getServerSession(authOptions);
 

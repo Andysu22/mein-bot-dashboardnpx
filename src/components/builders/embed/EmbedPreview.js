@@ -1,6 +1,7 @@
 "use client";
 import React from "react";
-import DiscordMarkdown from "@/components/builders/shared/DiscordMarkdown"; 
+import DiscordMarkdown from "@/components/builders/shared/DiscordMarkdown";
+import { cn } from "@/lib/utils"; 
 
 function toHexColor(s) {
   const t = String(s ?? "").trim();
@@ -52,7 +53,7 @@ export default function EmbedPreview({
           <div className="flex flex-col sm:flex-row max-w-full">
             <div className="w-[4px] rounded-l-[4px] shrink-0" style={{ backgroundColor: color }}></div>
             <div className="bg-[#2b2d31] rounded-r-[4px] grid gap-2 w-full border border-l-0 border-[#2b2d31] max-w-full">
-              <div className="p-4 grid gap-2">
+              <div className="p-3.5 grid gap-2"> {/* Padding slightly reduced for tighter feel */}
                 <div className="flex gap-4 justify-between items-start">
                   <div className="grid gap-1.5 w-full min-w-0">
                     {data.author?.name && (

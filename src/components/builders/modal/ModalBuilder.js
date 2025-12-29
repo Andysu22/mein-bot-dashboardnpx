@@ -30,31 +30,63 @@ import {
   Smile,
   Hash,
   AlignLeft,
-  MoreHorizontal
+  MoreHorizontal,
+  Users,
+  Shield,
+  AtSign
 } from "lucide-react";
 
 // --- CONFIG ---
 const MAX_COMPONENTS = 5;
 const MAX_OPTIONS = 25;
 
+// --- TYPES ---
+const KINDS = {
+  TEXT_INPUT: "text_input",
+  STRING_SELECT: "string_select",
+  USER_SELECT: "user_select",
+  ROLE_SELECT: "role_select",
+  CHANNEL_SELECT: "channel_select",
+  MENTIONABLE_SELECT: "mentionable_select"
+};
+
 // --- HELPERS ---
-function defaultComponent(kind = "text_input") {
-  return {
+function toSafeCustomId(s) {
+  const t = String(s ?? "")
+    .trim()
+    .replace(/\s+/g, "_")
+    .replace(/[^a-zA-Z0-9_:\-]/g, "")
+    .slice(0, 100);
+  return t || "id";
+}
+
+function defaultComponent(kind = KINDS.TEXT_INPUT) {
+  const base = {
     id: nanoid(),
-    kind, // 'text_input' | 'string_select'
-    custom_id: nanoid(10),
-    label: kind === "text_input" ? "Neue Frage" : "Neues Menü",
-    style: 1, // 1 = Short, 2 = Paragraph
+    kind,
+    custom_id: toSafeCustomId(`${kind}_${nanoid(4)}`),
+    label: kind === KINDS.TEXT_INPUT ? "Neue Frage" : "Neues Menü",
     required: true,
     placeholder: "",
-    description: "", // NEU: Standardwert
-    min_length: 0,
-    max_length: 1000,
-    options: kind === "string_select" ? [
-        { id: nanoid(), label: "Option 1", value: "opt_1", description: "", emoji: "" }
-    ] : [], 
+    description: "",
     collapsed: false,
   };
+
+  if (kind === KINDS.TEXT_INPUT) {
+    return { ...base, style: 1, min_length: 0, max_length: 1000 };
+  }
+  
+  if (kind === KINDS.STRING_SELECT) {
+    return { 
+        ...base, 
+        min_values: 1, 
+        max_values: 1,
+        options: [{ id: nanoid(), label: "Option 1", value: "opt_1", description: "", emoji: "" }] 
+    };
+  }
+
+  // Für User/Role/Channel Selects
+  return { ...base, min_values: 1, max_values: 1 };
 }
 
 // --- COMPONENTS ---
@@ -77,6 +109,20 @@ function AddFieldMenu({ onAdd, disabled }) {
         setIsOpen(false);
     };
 
+    const MenuItem = ({ kind, label, icon: Icon }) => (
+        <button 
+            onClick={() => handleSelect(kind)}
+            className="w-full flex items-center gap-3 px-3 py-2.5 hover:bg-[#5865F2] hover:text-white text-gray-300 rounded-md transition-colors group text-left"
+        >
+            <div className="p-1.5 bg-[#1e1f22] rounded group-hover:bg-white/20">
+                <Icon className="w-4 h-4" />
+            </div>
+            <div>
+                <div className="text-sm font-bold">{label}</div>
+            </div>
+        </button>
+    );
+
     return (
         <div className="relative" ref={containerRef}>
             <button 
@@ -94,33 +140,17 @@ function AddFieldMenu({ onAdd, disabled }) {
             </button>
 
             {isOpen && (
-                <div className="absolute right-0 mt-2 w-56 bg-[#111214] border border-white/10 rounded-lg shadow-2xl z-50 overflow-hidden animate-in fade-in slide-in-from-top-2">
+                <div className="absolute right-0 mt-2 w-60 bg-[#111214] border border-white/10 rounded-lg shadow-2xl z-50 overflow-hidden animate-in fade-in slide-in-from-top-2">
                     <div className="p-1.5 space-y-1">
-                        <button 
-                            onClick={() => handleSelect('text_input')}
-                            className="w-full flex items-center gap-3 px-3 py-2.5 hover:bg-[#5865F2] hover:text-white text-gray-300 rounded-md transition-colors group text-left"
-                        >
-                            <div className="p-1.5 bg-[#1e1f22] rounded group-hover:bg-white/20">
-                                <TextCursor className="w-4 h-4" />
-                            </div>
-                            <div>
-                                <div className="text-sm font-bold">Textfeld</div>
-                                <div className="text-[10px] opacity-70"></div>
-                            </div>
-                        </button>
+                        <div className="px-2 py-1 text-[10px] font-bold text-gray-500 uppercase">Input</div>
+                        <MenuItem kind={KINDS.TEXT_INPUT} label="Textfeld" icon={TextCursor} />
                         
-                        <button 
-                            onClick={() => handleSelect('string_select')}
-                            className="w-full flex items-center gap-3 px-3 py-2.5 hover:bg-[#5865F2] hover:text-white text-gray-300 rounded-md transition-colors group text-left"
-                        >
-                            <div className="p-1.5 bg-[#1e1f22] rounded group-hover:bg-white/20">
-                                <List className="w-4 h-4" />
-                            </div>
-                            <div>
-                                <div className="text-sm font-bold">Auswahlmenü</div>
-                                <div className="text-[10px] opacity-70"></div>
-                            </div>
-                        </button>
+                        <div className="px-2 py-1 text-[10px] font-bold text-gray-500 uppercase mt-2">Auswahl</div>
+                        <MenuItem kind={KINDS.STRING_SELECT} label="Dropdown Menü" icon={List} />
+                        <MenuItem kind={KINDS.USER_SELECT} label="User Auswahl" icon={Users} />
+                        <MenuItem kind={KINDS.ROLE_SELECT} label="Rollen Auswahl" icon={Shield} />
+                        <MenuItem kind={KINDS.CHANNEL_SELECT} label="Kanal Auswahl" icon={Hash} />
+                        <MenuItem kind={KINDS.MENTIONABLE_SELECT} label="User & Rollen" icon={AtSign} />
                     </div>
                 </div>
             )}
@@ -140,21 +170,13 @@ function SortableOptionRow({ option, onChange, onDelete, attributes, listeners, 
 
     return (
         <div ref={setNodeRef} style={style} className={cn("group flex items-start gap-3 bg-[#1e1f22] border border-white/5 p-3 rounded-lg mb-2 transition-all hover:border-white/10 hover:bg-[#232428]", isDragging && "border-[#5865F2] shadow-lg ring-1 ring-[#5865F2] bg-[#2b2d31]")}>
-            {/* Drag Handle */}
-            <button 
-                type="button" 
-                className="mt-3 text-gray-500 hover:text-gray-300 cursor-grab active:cursor-grabbing touch-none"
-                {...attributes} 
-                {...listeners}
-            >
+            <button type="button" className="mt-3 text-gray-500 hover:text-gray-300 cursor-grab active:cursor-grabbing touch-none" {...attributes} {...listeners}>
                 <GripVertical className="w-4 h-4" />
             </button>
 
-            {/* Inputs Grid */}
             <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-3">
-                {/* Row 1: Label & Value */}
                 <div className="space-y-1.5">
-                    <label className="text-[10px] uppercase font-bold text-gray-500 pl-0.5">Label (Name)</label>
+                    <label className="text-[10px] uppercase font-bold text-gray-500 pl-0.5">Label</label>
                     <input 
                         value={option.label} 
                         onChange={(e) => onChange({...option, label: e.target.value})} 
@@ -163,23 +185,21 @@ function SortableOptionRow({ option, onChange, onDelete, attributes, listeners, 
                     />
                 </div>
                 <div className="space-y-1.5">
-                    <label className="text-[10px] uppercase font-bold text-gray-500 pl-0.5">Value (Intern)</label>
+                    <label className="text-[10px] uppercase font-bold text-gray-500 pl-0.5">Value</label>
                     <input 
                         value={option.value} 
-                        onChange={(e) => onChange({...option, value: e.target.value})} 
+                        onChange={(e) => onChange({...option, value: toSafeCustomId(e.target.value)})} 
                         className="w-full bg-[#111214] border border-white/5 rounded px-2.5 py-1.5 text-xs font-mono text-gray-300 focus:border-[#5865F2] outline-none transition-colors"
-                        placeholder="option_value"
+                        placeholder="value"
                     />
                 </div>
-
-                {/* Row 2: Description & Emoji */}
                 <div className="space-y-1.5">
                     <label className="text-[10px] uppercase font-bold text-gray-500 pl-0.5 flex items-center gap-1"><AlignLeft className="w-3 h-3"/> Beschreibung</label>
                     <input 
                         value={option.description || ""} 
                         onChange={(e) => onChange({...option, description: e.target.value})} 
                         className="w-full bg-[#111214] border border-white/5 rounded px-2.5 py-1.5 text-xs text-gray-300 focus:border-[#5865F2] outline-none transition-colors"
-                        placeholder="Zusatztext (optional)"
+                        placeholder="Optional"
                     />
                 </div>
                 <div className="space-y-1.5">
@@ -193,13 +213,7 @@ function SortableOptionRow({ option, onChange, onDelete, attributes, listeners, 
                 </div>
             </div>
 
-            {/* Delete Button */}
-            <button 
-                type="button" 
-                onClick={() => onDelete(option.id)} 
-                className="mt-3 p-1.5 text-gray-500 hover:text-red-400 hover:bg-red-500/10 rounded transition-all opacity-0 group-hover:opacity-100"
-                title="Option löschen"
-            >
+            <button type="button" onClick={() => onDelete(option.id)} className="mt-3 p-1.5 text-gray-500 hover:text-red-400 hover:bg-red-500/10 rounded transition-all opacity-0 group-hover:opacity-100">
                 <Trash2 className="w-4 h-4" />
             </button>
         </div>
@@ -230,16 +244,14 @@ function OptionListEditor({ options, onChange }) {
     
     const handleAdd = () => {
         if (options.length >= MAX_OPTIONS) return;
-        onChange([...options, { id: nanoid(), label: "New Option", value: "new_val", description: "", emoji: "" }]);
+        onChange([...options, { id: nanoid(), label: "New Option", value: `option_${options.length+1}`, description: "", emoji: "" }]);
     };
 
     return (
         <div className="mt-6 pt-6 border-t border-white/5 space-y-4">
             <div className="flex items-center justify-between">
                 <div className="flex flex-col">
-                    <label className="text-xs font-bold text-white flex items-center gap-2">
-                        Antwort-Möglichkeiten
-                    </label>
+                    <label className="text-xs font-bold text-white flex items-center gap-2">Antwort-Möglichkeiten</label>
                     <span className="text-[10px] text-gray-500">Definiere die Optionen für das Dropdown.</span>
                 </div>
                 <button 
@@ -255,35 +267,44 @@ function OptionListEditor({ options, onChange }) {
             <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
                 <SortableContext items={options.map(o => o.id)} strategy={verticalListSortingStrategy}>
                     <div className="flex flex-col">
-                        {options.map(opt => (
-                            <SortableOptionItem key={opt.id} option={opt} onChange={handleChange} onDelete={handleDelete} />
-                        ))}
+                        {options.map(opt => <SortableOptionItem key={opt.id} option={opt} onChange={handleChange} onDelete={handleDelete} />)}
                     </div>
                 </SortableContext>
             </DndContext>
             
             {options.length === 0 && (
-                <div className="text-center py-8 text-xs text-gray-500 bg-[#111214] rounded-lg border border-dashed border-white/5 flex flex-col items-center gap-2">
-                    <List className="w-6 h-6 opacity-20"/>
-                    <span>Keine Optionen vorhanden.</span>
-                </div>
+                <div className="text-center py-4 text-xs text-gray-500 bg-[#111214] rounded-lg border border-dashed border-white/5">Keine Optionen vorhanden.</div>
             )}
-            
-            <div className="text-[10px] text-gray-600 text-right pr-1">
-                {options.length} / {MAX_OPTIONS} Optionen
-            </div>
         </div>
     );
 }
 
 // 4. Component Row (Outer)
 function SortableComponentRow({ component, onChange, onDelete, attributes, listeners, setNodeRef, transform, transition, isDragging }) {
-  const style = { 
-      transform: CSS.Transform.toString(transform), 
-      transition, 
-      opacity: isDragging ? 0.5 : 1, 
-      position: "relative", 
-      zIndex: isDragging ? 50 : "auto" 
+  const style = { transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.5 : 1, position: "relative", zIndex: isDragging ? 50 : "auto" };
+
+  const getIcon = (kind) => {
+      switch(kind) {
+          case KINDS.TEXT_INPUT: return <TextCursor className="w-5 h-5"/>;
+          case KINDS.STRING_SELECT: return <List className="w-5 h-5"/>;
+          case KINDS.USER_SELECT: return <Users className="w-5 h-5"/>;
+          case KINDS.ROLE_SELECT: return <Shield className="w-5 h-5"/>;
+          case KINDS.CHANNEL_SELECT: return <Hash className="w-5 h-5"/>;
+          case KINDS.MENTIONABLE_SELECT: return <AtSign className="w-5 h-5"/>;
+          default: return <List className="w-5 h-5"/>;
+      }
+  };
+
+  const getLabel = (kind) => {
+      switch(kind) {
+          case KINDS.TEXT_INPUT: return "Text Input";
+          case KINDS.STRING_SELECT: return "Dropdown Menu";
+          case KINDS.USER_SELECT: return "User Select";
+          case KINDS.ROLE_SELECT: return "Role Select";
+          case KINDS.CHANNEL_SELECT: return "Channel Select";
+          case KINDS.MENTIONABLE_SELECT: return "Mentionable Select";
+          default: return "Component";
+      }
   };
 
   return (
@@ -296,13 +317,13 @@ function SortableComponentRow({ component, onChange, onDelete, attributes, liste
         </button>
 
         <div className="flex-1 cursor-pointer flex items-center gap-4" onClick={() => onChange({ ...component, collapsed: !component.collapsed })}>
-            <div className={cn("w-10 h-10 rounded-lg flex items-center justify-center border bg-gradient-to-br shadow-inner", component.kind === 'text_input' ? "from-blue-500/10 to-blue-500/5 border-blue-500/20 text-blue-400" : "from-orange-500/10 to-orange-500/5 border-orange-500/20 text-orange-400")}>
-                {component.kind === 'text_input' ? <TextCursor className="w-5 h-5"/> : <List className="w-5 h-5"/>}
+            <div className={cn("w-10 h-10 rounded-lg flex items-center justify-center border bg-gradient-to-br shadow-inner text-gray-300 border-white/10 from-white/5 to-white/0")}>
+                {getIcon(component.kind)}
             </div>
             <div className="flex flex-col gap-0.5">
                 <span className="text-sm font-bold text-gray-100">{component.label || "Unbenanntes Feld"}</span>
                 <span className="text-[11px] text-gray-500 font-mono flex items-center gap-1.5">
-                    {component.kind === 'text_input' ? "Text Input" : "Selection Menu"}
+                    {getLabel(component.kind)}
                     <span className="w-1 h-1 rounded-full bg-gray-700"/>
                     <span className="text-gray-600">ID:</span> {component.custom_id}
                 </span>
@@ -322,21 +343,19 @@ function SortableComponentRow({ component, onChange, onDelete, attributes, liste
       {/* Body */}
       {!component.collapsed && (
         <div className="p-5 bg-[#18191c]">
-            
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 {/* Left Column */}
                 <div className="space-y-4">
                     <div className="space-y-1.5">
-                        <label className="text-[11px] uppercase font-bold text-gray-400 pl-1 flex items-center gap-1.5"><Type className="w-3.5 h-3.5"/> Frage / Label</label>
+                        <label className="text-[11px] uppercase font-bold text-gray-400 pl-1 flex items-center gap-1.5"><Type className="w-3.5 h-3.5"/> Label</label>
                         <input 
                             value={component.label} 
                             onChange={(e) => onChange({...component, label: e.target.value})} 
                             className="w-full bg-[#111214] border border-white/10 rounded-lg px-3.5 py-2.5 text-sm text-white focus:border-[#5865F2] outline-none placeholder:text-gray-600 transition-all shadow-sm focus:ring-1 focus:ring-[#5865F2]/20"
                             maxLength={45}
-                            placeholder="Was möchtest du wissen?"
+                            placeholder="Anzeigetext"
                         />
                     </div>
-                    {/* HIER HABE ICH PLACEHOLDER & DESCRIPTION EINGEFÜGT */}
                     <div className="space-y-1.5">
                         <label className="text-[11px] uppercase font-bold text-gray-400 pl-1 flex items-center gap-1.5"><MoreHorizontal className="w-3.5 h-3.5"/> Placeholder</label>
                         <input 
@@ -344,17 +363,17 @@ function SortableComponentRow({ component, onChange, onDelete, attributes, liste
                             onChange={(e) => onChange({...component, placeholder: e.target.value})} 
                             className="w-full bg-[#111214] border border-white/10 rounded-lg px-3.5 py-2.5 text-sm text-white focus:border-[#5865F2] outline-none placeholder:text-gray-600 transition-all shadow-sm focus:ring-1 focus:ring-[#5865F2]/20"
                             maxLength={100}
-                            placeholder="Beispiel-Antwort..."
+                            placeholder="Platzhaltertext..."
                         />
                     </div>
                     <div className="space-y-1.5">
-                        <label className="text-[11px] uppercase font-bold text-gray-400 pl-1 flex items-center gap-1.5"><AlignLeft className="w-3.5 h-3.5"/> Beschreibung (Optional)</label>
+                        <label className="text-[11px] uppercase font-bold text-gray-400 pl-1 flex items-center gap-1.5"><AlignLeft className="w-3.5 h-3.5"/> Beschreibung</label>
                         <input 
                             value={component.description || ""} 
                             onChange={(e) => onChange({...component, description: e.target.value})} 
                             className="w-full bg-[#111214] border border-white/10 rounded-lg px-3.5 py-2.5 text-sm text-white focus:border-[#5865F2] outline-none placeholder:text-gray-600 transition-all shadow-sm focus:ring-1 focus:ring-[#5865F2]/20"
                             maxLength={100}
-                            placeholder="Zusatzinfo unter dem Label..."
+                            placeholder="Zusatzinfo..."
                         />
                     </div>
                 </div>
@@ -365,24 +384,21 @@ function SortableComponentRow({ component, onChange, onDelete, attributes, liste
                         <label className="text-[11px] uppercase font-bold text-gray-400 pl-1 flex items-center gap-1.5"><Hash className="w-3.5 h-3.5"/> Custom ID</label>
                         <input 
                             value={component.custom_id} 
-                            onChange={(e) => onChange({...component, custom_id: e.target.value})} 
+                            onChange={(e) => onChange({...component, custom_id: toSafeCustomId(e.target.value)})} 
                             className="w-full bg-[#111214] border border-white/10 rounded-lg px-3.5 py-2.5 text-sm font-mono text-gray-300 focus:border-[#5865F2] outline-none transition-all shadow-sm focus:ring-1 focus:ring-[#5865F2]/20"
                             maxLength={100}
                         />
                     </div>
                     
                     <div className="flex items-center justify-between pt-6 px-1">
-                        <div 
-                            onClick={() => onChange({...component, required: !component.required})}
-                            className="flex items-center gap-3 cursor-pointer group select-none"
-                        >
+                        <div onClick={() => onChange({...component, required: !component.required})} className="flex items-center gap-3 cursor-pointer group select-none">
                             <div className={cn("w-5 h-5 rounded-[5px] border flex items-center justify-center transition-all shadow-sm", component.required ? "bg-[#5865F2] border-[#5865F2]" : "border-gray-600 bg-[#111214] group-hover:border-gray-400")}>
                                 {component.required && <Check className="w-3.5 h-3.5 text-white stroke-[3]" />}
                             </div>
                             <span className={cn("text-xs font-medium group-hover:text-white transition-colors", component.required ? "text-white" : "text-gray-400")}>Pflichtfeld</span>
                         </div>
 
-                        {component.kind === 'text_input' && (
+                        {component.kind === KINDS.TEXT_INPUT && (
                             <div className="flex bg-[#111214] p-1 rounded-lg border border-white/10">
                                 <button onClick={() => onChange({...component, style: 1})} className={cn("px-4 py-1.5 rounded-md text-[11px] font-bold uppercase transition-all", component.style === 1 ? "bg-[#5865F2] text-white shadow-sm" : "text-gray-500 hover:text-gray-300 hover:bg-white/5")}>Kurz</button>
                                 <button onClick={() => onChange({...component, style: 2})} className={cn("px-4 py-1.5 rounded-md text-[11px] font-bold uppercase transition-all", component.style === 2 ? "bg-[#5865F2] text-white shadow-sm" : "text-gray-500 hover:text-gray-300 hover:bg-white/5")}>Lang</button>
@@ -392,12 +408,9 @@ function SortableComponentRow({ component, onChange, onDelete, attributes, liste
                 </div>
             </div>
 
-            {/* Options Editor (Only for Select) */}
-            {component.kind === 'string_select' && (
-                <OptionListEditor 
-                    options={component.options || []} 
-                    onChange={(newOpts) => onChange({ ...component, options: newOpts })} 
-                />
+            {/* Options Editor (Only for String Select) */}
+            {component.kind === KINDS.STRING_SELECT && (
+                <OptionListEditor options={component.options || []} onChange={(newOpts) => onChange({ ...component, options: newOpts })} />
             )}
         </div>
       )}
@@ -417,10 +430,8 @@ export default function ModalBuilder({ data, onChange }) {
   const onDragEnd = (event) => {
     const { active, over } = event;
     if (!over || active.id === over.id) return;
-    
     const oldIndex = (data.components || []).findIndex(c => c.id === active.id);
     const newIndex = (data.components || []).findIndex(c => c.id === over.id);
-    
     if (oldIndex !== -1 && newIndex !== -1) {
         onChange({ ...data, components: arrayMove(data.components, oldIndex, newIndex) });
     }
@@ -436,13 +447,9 @@ export default function ModalBuilder({ data, onChange }) {
 
   return (
     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-2 duration-500">
-        
-        {/* Title Input */}
         <div className="bg-[#1e1f22] p-6 rounded-xl border border-white/5 shadow-sm">
             <div className="space-y-2">
-                <label className="text-[11px] uppercase font-bold text-gray-400 pl-1 flex items-center gap-2">
-                    <Type className="w-3.5 h-3.5 text-[#5865F2]" /> Fenstertitel
-                </label>
+                <label className="text-[11px] uppercase font-bold text-gray-400 pl-1 flex items-center gap-2"><Type className="w-3.5 h-3.5 text-[#5865F2]" /> Fenstertitel</label>
                 <input 
                     value={data.title || ""} 
                     onChange={(e) => onChange({...data, title: e.target.value})} 
@@ -453,43 +460,29 @@ export default function ModalBuilder({ data, onChange }) {
             </div>
         </div>
 
-        {/* Components Manager */}
         <div>
             <div className="flex items-end justify-between mb-5 px-1">
                 <div>
                     <div className="text-white font-bold text-lg flex items-center gap-2">
                         Formular Felder
-                        <span className="text-xs font-medium text-gray-500 bg-white/5 px-2 py-0.5 rounded-full border border-white/5">
-                            { (data.components || []).length } / {MAX_COMPONENTS}
-                        </span>
+                        <span className="text-xs font-medium text-gray-500 bg-white/5 px-2 py-0.5 rounded-full border border-white/5">{ (data.components || []).length } / {MAX_COMPONENTS}</span>
                     </div>
                     <p className="text-xs text-gray-400 mt-1">Definiere die Fragen, die der User beantworten muss.</p>
                 </div>
-                
-                {/* NEW DROPDOWN MENU */}
                 <AddFieldMenu onAdd={addComp} disabled={(data.components || []).length >= MAX_COMPONENTS} />
             </div>
 
             <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
                 <SortableContext items={(data.components || []).map(c => c.id)} strategy={verticalListSortingStrategy}>
                     <div className="flex flex-col gap-1">
-                        {(data.components || []).map(comp => (
-                            <SortableComponentItem 
-                                key={comp.id} 
-                                component={comp} 
-                                onChange={changeComp} 
-                                onDelete={delComp} 
-                            />
-                        ))}
+                        {(data.components || []).map(comp => <SortableComponentItem key={comp.id} component={comp} onChange={changeComp} onDelete={delComp} />)}
                     </div>
                 </SortableContext>
             </DndContext>
 
             {(data.components || []).length === 0 && (
                 <div className="flex flex-col items-center justify-center py-16 border-2 border-dashed border-white/5 rounded-2xl bg-white/[0.01]">
-                    <div className="w-16 h-16 rounded-full bg-white/5 flex items-center justify-center mb-4">
-                        <List className="w-8 h-8 text-gray-600 opacity-50"/>
-                    </div>
+                    <div className="w-16 h-16 rounded-full bg-white/5 flex items-center justify-center mb-4"><List className="w-8 h-8 text-gray-600 opacity-50"/></div>
                     <div className="text-sm font-medium text-gray-300">Dein Formular ist leer</div>
                     <div className="text-xs text-gray-500 mt-1">Klicke oben auf "Feld hinzufügen", um zu starten.</div>
                 </div>
