@@ -7,13 +7,13 @@ import { z } from "zod";
 import { checkRateLimit } from "@/lib/rateLimit";
 
 // ------------------------------------------------------------------
-// CACHE FÜR ADMIN RECHTE (Neu)
+// CACHE FÜR ADMIN RECHTE
 // ------------------------------------------------------------------
 const adminCache = new Map(); // Speichert: "userId-guildId" -> { isAdmin: true/false, timestamp: 12345 }
 const CACHE_TTL = 60 * 1000;  // 60 Sekunden Cache-Dauer
 
 // ------------------------------------------------------------------
-// Validierungs-Schemas (Unverändert)
+// Validierungs-Schemas
 // ------------------------------------------------------------------
 const embedSchema = z.object({
   title: z.string().max(256).optional().nullable(),
@@ -70,7 +70,9 @@ async function updateBotNickname(guildId, nickname) {
   } catch (e) { console.error("Nickname update failed", e); }
 }
 
-// OPTIMIERTE CHECK-ADMIN FUNKTION MIT CACHE
+// ------------------------------------------------------------------
+// VERBESSERTE CHECK-ADMIN FUNKTION (Jetzt mit Bot-Fallback!)
+// ------------------------------------------------------------------
 async function checkAdmin(accessToken, userId, guildId) {
   if (!guildId || !userId) return false;
 
@@ -80,58 +82,104 @@ async function checkAdmin(accessToken, userId, guildId) {
   const now = Date.now();
 
   if (cached && (now - cached.timestamp < CACHE_TTL)) {
-    // Wenn Cache existiert und jünger als 60sek ist -> nimm Cache
     return cached.isAdmin;
   }
 
   let isAdmin = false;
 
   try {
-    // 2. Echter Check (Discord API)
-    
-    // A) Owner Check via Bot Token
+    // ---------------------------------------------------
+    // SCHRITT A: Owner Check (Schnellste Methode)
+    // ---------------------------------------------------
     const botToken = process.env.DISCORD_TOKEN;
     if (botToken) {
-      const gRes = await fetch(`https://discord.com/api/v10/guilds/${guildId}`, { headers: { Authorization: `Bot ${botToken}` } });
+      const gRes = await fetch(`https://discord.com/api/v10/guilds/${guildId}`, { 
+          headers: { Authorization: `Bot ${botToken}` },
+          cache: "no-store" 
+      });
       if (gRes.ok) {
         const g = await gRes.json();
+        // Wenn User der Owner ist -> Admin
         if (g?.owner_id && String(g.owner_id) === String(userId)) {
            isAdmin = true;
         }
       }
     }
     
-    // B) Permissions Check via User Token (nur wenn A nicht schon true ergab)
+    // ---------------------------------------------------
+    // SCHRITT B: User Token Check (OAuth2 Daten)
+    // ---------------------------------------------------
     if (!isAdmin && accessToken) {
-      const res = await fetch("https://discord.com/api/v10/users/@me/guilds", { headers: { Authorization: `Bearer ${accessToken}` } });
+      const res = await fetch("https://discord.com/api/v10/users/@me/guilds", { 
+          headers: { Authorization: `Bearer ${accessToken}` } 
+      });
       if (res.ok) {
         const guilds = await res.json();
         const guild = Array.isArray(guilds) ? guilds.find((x) => x.id === guildId) : null;
         
         if (guild) {
-          if (guild.owner === true) {
-             isAdmin = true;
-          } else {
              let p; 
              try { p = BigInt(guild.permissions); } catch { p = BigInt(0); }
              // Check ADMINISTRATOR (0x8) or MANAGE_GUILD (0x20)
              if ((p & BigInt(0x8)) === BigInt(0x8) || (p & BigInt(0x20)) === BigInt(0x20)) {
                 isAdmin = true;
              }
-          }
         }
       }
     }
+
+    // ---------------------------------------------------
+    // SCHRITT C: Fallback via Bot Token (Die fehlende Rettung!)
+    // Wenn A und B "false" sagten, fragen wir den Bot direkt nach den Rollen
+    // ---------------------------------------------------
+    if (!isAdmin && botToken) {
+        const [rolesRes, memberRes] = await Promise.all([
+            fetch(`https://discord.com/api/v10/guilds/${guildId}/roles`, {
+                headers: { Authorization: `Bot ${botToken}` },
+                cache: "no-store",
+            }),
+            fetch(`https://discord.com/api/v10/guilds/${guildId}/members/${userId}`, {
+                headers: { Authorization: `Bot ${botToken}` },
+                cache: "no-store",
+            }),
+        ]);
+
+        if (rolesRes.ok && memberRes.ok) {
+            const roles = await rolesRes.json();
+            const member = await memberRes.json();
+
+            if (Array.isArray(roles) && Array.isArray(member?.roles)) {
+                const roleMap = new Map();
+                for (const r of roles) roleMap.set(r.id, r);
+
+                // Rolle @everyone ist die GuildID selbst
+                const roleIds = new Set([guildId, ...member.roles]);
+
+                let perms = BigInt(0);
+                for (const rid of roleIds) {
+                    const r = roleMap.get(rid);
+                    if (!r?.permissions) continue;
+                    perms |= BigInt(r.permissions);
+                }
+
+                const ADMIN = BigInt(0x8);
+                const MANAGE_GUILD = BigInt(0x20);
+                
+                if ((perms & ADMIN) === ADMIN || (perms & MANAGE_GUILD) === MANAGE_GUILD) {
+                    isAdmin = true;
+                }
+            }
+        }
+    }
+
   } catch (err) {
     console.error("Admin Check Error:", err);
-    // Im Fehlerfall lieber 'false' zurückgeben als unsicher zu sein
     isAdmin = false;
   }
 
   // 3. Ergebnis cachen
   adminCache.set(cacheKey, { isAdmin, timestamp: now });
   
-  // Kleines Cleanup: Wenn Cache zu groß wird (z.B. > 1000 Einträge), leeren (einfachste Garbage Collection)
   if (adminCache.size > 1000) adminCache.clear();
 
   return isAdmin;
@@ -150,7 +198,6 @@ export async function GET(req, { params }) {
   
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  // Nutzt jetzt die gecachte Funktion
   const isAdmin = await checkAdmin(session.accessToken, session.user?.id, guildId);
   if (!isAdmin) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 

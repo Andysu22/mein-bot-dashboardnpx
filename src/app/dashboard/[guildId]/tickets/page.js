@@ -27,7 +27,9 @@ import {
   Maximize2,
   GripHorizontal,
   Eye,
-  X
+  X,
+  Copy, // <--- Hinzufügen
+  Send  // <--- Hinzufügen
 } from "lucide-react";
 import { useParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
@@ -542,7 +544,6 @@ export default function TicketsPage() {
   const selectedTicketId = selectedTicket?._id;
   const [messages, setMessages] = useState([]);
   const [chatLoading, setChatLoading] = useState(false);
-  const [replyText, setReplyText] = useState("");
   const chatScrollRef = useRef(null);
 
   // --- UI STATE ---
@@ -701,21 +702,7 @@ export default function TicketsPage() {
   async function onSelectTicket(t) {
     setSelectedTicket(t);
     setMessages([]);
-    setReplyText("");
     await fetchMessages(t._id);
-  }
-
-  async function sendReply() {
-    if (!selectedTicketId || !replyText.trim()) return;
-    try {
-      await fetch(`/api/tickets/${selectedTicketId}`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ content: replyText }),
-      });
-      setReplyText("");
-      fetchMessages(selectedTicketId);
-    } catch {}
   }
 
   async function handleSave() {
@@ -932,54 +919,55 @@ export default function TicketsPage() {
                   <div className="p-4 bg-white/5 rounded-full">
                     <MessageSquare className="w-8 h-8 opacity-40" />
                   </div>
-                  <p className="text-sm">Wähle ein Ticket aus, um den Chat zu laden.</p>
+                  <p className="text-sm">Wähle ein Ticket aus, um den Verlauf zu sehen.</p>
                 </div>
               ) : (
                 <>
-                  <div className="bg-[#16171a] border-b border-white/10 p-4 flex justify-between items-center">
+                  {/* HEADER */}
+                  <div className="bg-[#16171a] border-b border-white/10 p-4 flex justify-between items-center shrink-0">
                     <div className="font-bold text-white flex items-center gap-2">
                       <Hash className="w-4 h-4 text-gray-500" /> {selectedTicket.issue}
                     </div>
-                    <div className="text-[10px] font-mono text-gray-600 bg-black/30 px-2 py-1 rounded">ID: {selectedTicket.channelId}</div>
+                    <div className="flex gap-3 items-center">
+                        <div className="text-[10px] font-mono text-gray-400">
+                            {selectedTicket.userTag}
+                        </div>
+                        <div className="text-[10px] font-mono text-gray-600 bg-black/30 px-2 py-1 rounded">
+                            ID: {selectedTicket.channelId}
+                        </div>
+                    </div>
                   </div>
 
+                  {/* MESSAGE LIST - Nimmt jetzt den ganzen Platz ein (flex-1) */}
                   <div className="flex-1 overflow-hidden relative bg-[#1e1f22]/50">
-                    <div ref={chatScrollRef} className="absolute inset-0 overflow-y-auto p-4 space-y-4">
+                    <div ref={chatScrollRef} className="absolute inset-0 overflow-y-auto p-4 space-y-4 custom-scrollbar">
+                      {messages.length === 0 && !chatLoading && (
+                          <div className="text-center text-gray-500 text-xs mt-10">Keine Nachrichten vorhanden.</div>
+                      )}
+                      
                       {messages.map((m, i) => (
                         <div key={i} className="group flex gap-3 hover:bg-white/[0.02] p-2 rounded-lg -mx-2 transition-colors">
-                          <div className="w-9 h-9 rounded-full bg-[#5865F2] flex items-center justify-center text-white font-bold text-xs shrink-0 shadow-sm">
+                          <div className="w-9 h-9 rounded-full bg-[#5865F2] flex items-center justify-center text-white font-bold text-xs shrink-0 shadow-sm select-none">
                             {m.authorTag?.charAt(0).toUpperCase()}
                           </div>
-                          <div>
+                          <div className="min-w-0 flex-1">
                             <div className="flex items-baseline gap-2">
-                              <span className="font-bold text-gray-100 text-sm">{m.authorTag}</span>
+                              <span className="font-bold text-gray-100 text-sm truncate">{m.authorTag}</span>
                               <span className="text-[10px] text-gray-500 font-mono">{new Date(m.timestamp).toLocaleString()}</span>
                             </div>
-                            <div className="text-[14px] text-gray-300 mt-1 whitespace-pre-wrap leading-relaxed">
+                            <div className="text-[14px] text-gray-300 mt-1 whitespace-pre-wrap leading-relaxed break-words">
                               <DiscordMarkdown text={m.content} />
                             </div>
                           </div>
                         </div>
                       ))}
+                      {chatLoading && (
+                          <div className="text-center text-gray-500 text-xs animate-pulse py-4">Lade Verlauf...</div>
+                      )}
                     </div>
                   </div>
-
-                  <div className="p-4 bg-[#16171a] border-t border-white/10">
-                    <div className="flex gap-2">
-                      <Input
-                        value={replyText}
-                        onChange={(e) => setReplyText(e.target.value)}
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter" && !e.shiftKey) sendReply();
-                        }}
-                        placeholder={`Antworte an ${selectedTicket.userTag}...`}
-                        className="bg-[#111214] border-white/10 text-white focus-visible:ring-[#5865F2] h-10"
-                      />
-                      <Button onClick={sendReply} className="bg-[#5865F2] hover:bg-[#4752C4] h-10 w-10 p-0">
-                        <Send className="w-4 h-4" />
-                      </Button>
-                    </div>
-                  </div>
+                  
+                  {/* FOOTER WURDE ENTFERNT */}
                 </>
               )}
             </Card>
