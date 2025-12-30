@@ -14,14 +14,11 @@ const schema = new mongoose.Schema({
   ticketCategoryId: { type: String, default: null },
   adminRoles: [String],
 
-  // --- PANEL EINSTELLUNGEN ---
+  // --- TICKET PANEL EINSTELLUNGEN ---
   panelChannelId: { type: String, default: null },
   panelMessageId: { type: String, default: null },
-
   panelButtonText: { type: String, default: "Ticket erstellen" },
   panelButtonStyle: { type: String, default: "Primary" },
-  
-  // WICHTIG: Hier ist das Bild nun Standard!
   panelEmbed: { 
     type: mongoose.Schema.Types.Mixed, 
     default: {
@@ -29,14 +26,14 @@ const schema = new mongoose.Schema({
       description: "Klicke auf den Button, um ein Ticket zu öffnen.",
       color: "#5865F2",
       footer: { text: "Support System" },
-      image_url: "https://dummyimage.com/600x200/2b2b2b/ffffff&text=Support" // DEIN BILD
+      image_url: "https://dummyimage.com/600x200/2b2b2b/ffffff&text=Support"
     }
   },
 
   modalTitle: { type: String, default: "Ticket erstellen" },
   ticketWelcomeMessage: { type: String, default: "Hallo {user}, wie können wir dir helfen?" },
 
-  // --- Ticket Form ---
+  // --- Ticket Formular ---
   ticketForm: {
     mode: { type: String, enum: ["default", "custom"], default: "default" },
     version: { type: Number, default: 1 },
@@ -52,12 +49,49 @@ const schema = new mongoose.Schema({
   tempCategoryChannelId: { type: String, default: null },
   tempVcAdminRoleId: { type: String, default: null },
 
+  // --- BEWERBUNGEN (APPLICATIONS) ---
   appPanelChannelId: { type: String, default: null },
   appReviewChannelId: { type: String, default: null },
   appPanelMessageId: { type: String, default: null },
   applicantRoleId: { type: String, default: null },
   appStaffRoleId: { type: String, default: null },
   appDeclineCooldownDays: { type: Number, default: 7 },
+
+  // Design Felder für Bewerbungen
+  appPanelButtonText: { type: String, default: "Bewerben" },
+  appPanelButtonStyle: { type: String, default: "Success" },
+  appPanelEmbed: { 
+    type: mongoose.Schema.Types.Mixed, 
+    default: {
+      title: "Jetzt Bewerben",
+      description: "Klicke auf den Button, um dich zu bewerben.",
+      color: "#248046",
+      footer: { text: "Bewerbungssystem" },
+      image_url: "https://dummyimage.com/600x200/2b2b2b/ffffff&text=Bewerbung"
+    }
+  },
+
+  // Formular für Bewerbungen
+  applicationForm: {
+    mode: { type: String, enum: ["default", "custom"], default: "default" },
+    version: { type: Number, default: 1 },
+    botCode: { type: String, default: null },
+    builderData: { type: mongoose.Schema.Types.Mixed, default: null },
+  },
+
+  // NEU: Antwort Konfiguration (Text oder Embed)
+  appResponse: {
+    mode: { type: String, enum: ["text", "embed"], default: "text" },
+    content: { type: String, default: "Deine Bewerbung ist eingegangen! Wir melden uns." },
+    embed: { 
+        type: mongoose.Schema.Types.Mixed, 
+        default: {
+            title: "Bewerbung abgesendet",
+            description: "Danke {user}, wir haben deine Bewerbung erhalten.",
+            color: "#57F287"
+        } 
+    }
+  },
   
   enabledCommands: { type: [String], default: ["help", "ping"] },
 }, { minimize: false });

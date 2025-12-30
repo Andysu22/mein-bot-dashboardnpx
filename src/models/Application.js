@@ -25,4 +25,5 @@ const schema = new mongoose.Schema({
 // Verhindert, dass ein User mehrere aktive Einträge auf demselben Server hat (Unique Index)
 schema.index({ guildId: 1, userId: 1 }, { unique: true });
 
-export const Application = mongoose.model('Application', schema);
+// Verhindert Fehler beim Hot-Reload
+export const Application = mongoose.models.Application || mongoose.model('Application', schema);
