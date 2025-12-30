@@ -32,10 +32,10 @@ const embedSchema = z.object({
 
 // Form Schema
 const formSchema = z.object({
-    mode: z.string().optional(),
-    version: z.number().optional(),
-    botCode: z.string().nullable().optional(),
-    builderData: z.any().optional(),
+  mode: z.string().optional(),
+  version: z.number().optional(),
+  botCode: z.string().nullable().optional(),
+  builderData: z.any().optional(),
 }).optional().nullable();
 
 // Main Schema
@@ -61,17 +61,20 @@ const settingsSchema = z.object({
   appStaffRoleId: z.string().nullable().optional(),
   applicantRoleId: z.string().nullable().optional(),
   appDeclineCooldownDays: z.number().optional(),
-  
+
   appPanelEmbed: embedSchema.optional().nullable(),
   appPanelButtonText: z.string().max(80).optional(),
   appPanelButtonStyle: z.string().optional(),
   applicationForm: formSchema,
 
-  // NEU: Response Settings
+  // ✅ NEU: Review Embed speichern/validieren
+  appReviewEmbed: embedSchema.optional().nullable(),
+
+  // Response Settings
   appResponse: z.object({
-      mode: z.enum(["text", "embed"]).optional(),
-      content: z.string().max(2000).optional(),
-      embed: embedSchema.optional().nullable()
+    mode: z.enum(["text", "embed"]).optional(),
+    content: z.string().max(2000).optional(),
+    embed: embedSchema.optional().nullable(),
   }).optional(),
 
 }).passthrough();
@@ -92,31 +95,31 @@ async function checkAdmin(accessToken, userId, guildId) {
   try {
     const botToken = process.env.DISCORD_TOKEN;
     if (botToken) {
-      const gRes = await fetch(`https://discord.com/api/v10/guilds/${guildId}`, { 
-          headers: { Authorization: `Bot ${botToken}` },
-          cache: "no-store" 
+      const gRes = await fetch(`https://discord.com/api/v10/guilds/${guildId}`, {
+        headers: { Authorization: `Bot ${botToken}` },
+        cache: "no-store"
       });
       if (gRes.ok) {
         const g = await gRes.json();
         if (g?.owner_id && String(g.owner_id) === String(userId)) {
-           isAdmin = true;
+          isAdmin = true;
         }
       }
     }
-    
+
     if (!isAdmin && accessToken) {
-      const res = await fetch("https://discord.com/api/v10/users/@me/guilds", { 
-          headers: { Authorization: `Bearer ${accessToken}` } 
+      const res = await fetch("https://discord.com/api/v10/users/@me/guilds", {
+        headers: { Authorization: `Bearer ${accessToken}` }
       });
       if (res.ok) {
         const guilds = await res.json();
         const guild = Array.isArray(guilds) ? guilds.find((x) => x.id === guildId) : null;
         if (guild) {
-             let p; 
-             try { p = BigInt(guild.permissions); } catch { p = BigInt(0); }
-             if ((p & BigInt(0x8)) === BigInt(0x8) || (p & BigInt(0x20)) === BigInt(0x20)) {
-                isAdmin = true;
-             }
+          let p;
+          try { p = BigInt(guild.permissions); } catch { p = BigInt(0); }
+          if ((p & BigInt(0x8)) === BigInt(0x8) || (p & BigInt(0x20)) === BigInt(0x20)) {
+            isAdmin = true;
+          }
         }
       }
     }
@@ -134,7 +137,7 @@ export async function GET(req, { params }) {
 
   const { guildId } = await params;
   const session = await getServerSession(authOptions);
-  
+
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const isAdmin = await checkAdmin(session.accessToken, session.user?.id, guildId);
@@ -150,7 +153,7 @@ export async function POST(req, { params }) {
 
   const { guildId } = await params;
   const session = await getServerSession(authOptions);
-  
+
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const isAdmin = await checkAdmin(session.accessToken, session.user?.id, guildId);

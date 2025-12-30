@@ -7,7 +7,7 @@ const schema = new mongoose.Schema({
   ticketsEnabled: { type: Boolean, default: true },
   ticketLanguage: { type: String, default: "en" },
   botNickname: { type: String, default: null },
-  
+
   // --- Channel & Rollen IDs ---
   logChannelId: { type: String, default: null },
   supportRoleId: { type: String, default: null },
@@ -19,8 +19,8 @@ const schema = new mongoose.Schema({
   panelMessageId: { type: String, default: null },
   panelButtonText: { type: String, default: "Ticket erstellen" },
   panelButtonStyle: { type: String, default: "Primary" },
-  panelEmbed: { 
-    type: mongoose.Schema.Types.Mixed, 
+  panelEmbed: {
+    type: mongoose.Schema.Types.Mixed,
     default: {
       title: "Support Ticket",
       description: "Klicke auf den Button, um ein Ticket zu öffnen.",
@@ -43,7 +43,7 @@ const schema = new mongoose.Schema({
 
   // --- Andere Module ---
   deeplApiKey: { type: String, default: null },
-  
+
   tempVcEnabled: { type: Boolean, default: false },
   creatorChannelId: { type: String, default: null },
   tempCategoryChannelId: { type: String, default: null },
@@ -60,14 +60,25 @@ const schema = new mongoose.Schema({
   // Design Felder für Bewerbungen
   appPanelButtonText: { type: String, default: "Bewerben" },
   appPanelButtonStyle: { type: String, default: "Success" },
-  appPanelEmbed: { 
-    type: mongoose.Schema.Types.Mixed, 
+  appPanelEmbed: {
+    type: mongoose.Schema.Types.Mixed,
     default: {
       title: "Jetzt Bewerben",
       description: "Klicke auf den Button, um dich zu bewerben.",
       color: "#248046",
       footer: { text: "Bewerbungssystem" },
       image_url: "https://dummyimage.com/600x200/2b2b2b/ffffff&text=Bewerbung"
+    }
+  },
+
+  // ✅ NEU: Review Embed Design
+  appReviewEmbed: {
+    type: mongoose.Schema.Types.Mixed,
+    default: {
+      title: "Neue Bewerbung",
+      description: "Von: {user}\n\n**IGN:** {field:app_ign}\n**Motivation:** {field:app_motivation}",
+      color: "#5865F2",
+      timestamp: true
     }
   },
 
@@ -79,26 +90,26 @@ const schema = new mongoose.Schema({
     builderData: { type: mongoose.Schema.Types.Mixed, default: null },
   },
 
-  // NEU: Antwort Konfiguration (Text oder Embed)
+  // Antwort Konfiguration (Text oder Embed)
   appResponse: {
     mode: { type: String, enum: ["text", "embed"], default: "text" },
     content: { type: String, default: "Deine Bewerbung ist eingegangen! Wir melden uns." },
-    embed: { 
-        type: mongoose.Schema.Types.Mixed, 
-        default: {
-            title: "Bewerbung abgesendet",
-            description: "Danke {user}, wir haben deine Bewerbung erhalten.",
-            color: "#57F287"
-        } 
+    embed: {
+      type: mongoose.Schema.Types.Mixed,
+      default: {
+        title: "Bewerbung abgesendet",
+        description: "Danke {user}, wir haben deine Bewerbung erhalten.",
+        color: "#57F287"
+      }
     }
   },
-  
+
   enabledCommands: { type: [String], default: ["help", "ping"] },
 }, { minimize: false });
 
 // Cache-Fix für Hot-Reloading
 if (mongoose.models && mongoose.models.GuildSettings) {
-    delete mongoose.models.GuildSettings;
+  delete mongoose.models.GuildSettings;
 }
 
 export const GuildSettings = mongoose.model("GuildSettings", schema);
