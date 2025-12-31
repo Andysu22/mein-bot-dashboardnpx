@@ -1,3 +1,4 @@
+// src/components/builders/embed/EmbedBuilder.js
 "use client";
 
 import React, { useState, useRef, useEffect } from "react";
@@ -6,6 +7,7 @@ import { DndContext, PointerSensor, useSensor, useSensors, closestCenter } from 
 import { SortableContext, verticalListSortingStrategy, useSortable, arrayMove } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { cn } from "@/lib/utils"; 
+import MarkdownHelpDialog from "@/components/builders/shared/MarkdownHelpDialog";
 import { 
   GripVertical, 
   Trash2, 
@@ -304,10 +306,13 @@ export default function EmbedBuilder({ data, onChange, hiddenSections = [] }) {
             icon={Layout} 
             defaultOpen={true}
             extraAction={
-                <ModernColorPicker 
-                    value={toHexColor(data.color)} 
-                    onChange={(c) => onChange({...data, color: c})} 
-                />
+                <div className="flex items-center gap-2">
+                    <ModernColorPicker 
+                        value={toHexColor(data.color)} 
+                        onChange={(c) => onChange({...data, color: c})} 
+                    />
+                    <MarkdownHelpDialog />
+                </div>
             }
         >
             <div className="space-y-3">

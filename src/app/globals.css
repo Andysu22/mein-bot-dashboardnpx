@@ -28,39 +28,54 @@
   --radius: 1rem;
 }
 
-@layer base {
-  html, body {
-    /* overflow: hidden entfernt für Pull-to-Refresh am Handy */
-    scroll-behavior: smooth;
-    background-color: #0f1012;
-    color: #e1e1e1;
-    min-height: 100%;
-  }
-
-  /* Verhindert horizontales Wackeln */
-  body {
-    overflow-x: hidden;
-  }
+html, body {
+  background-color: #0f1012;
+  color: #e1e1e1;
+  min-height: 100%;
 }
 
-/* Scroll-Container für Desktop-Inhalt */
-.custom-scroll {
-  scrollbar-width: thin;
-  scrollbar-color: rgba(255, 255, 255, 0.1) transparent;
+/* ---------------- Discord Markdown ---------------- */
+
+.discord-md { width: 100%; }
+.discord-md__p { margin: 0; }
+.discord-md__spacer { height: .35rem; }
+
+.discord-md__h1,
+.discord-md__h2,
+.discord-md__h3 {
+  font-weight: 700;
+  color: #fff;
+  margin: .2rem 0;
+}
+.discord-md__h1 { font-size: 1.15rem; }
+.discord-md__h2 { font-size: 1.05rem; }
+.discord-md__h3 { font-size: .98rem; }
+
+.discord-md__inlinecode {
+  background: rgba(0,0,0,.35);
+  padding: 2px 4px;
+  border-radius: 4px;
+  font-family: ui-monospace, monospace;
+  font-size: .92em;
 }
 
-.custom-scroll::-webkit-scrollbar {
-  width: 10px;
+.discord-md__link {
+  color: #00a8fc;
+  text-decoration: none;
+}
+.discord-md__link:hover { text-decoration: underline; }
+
+/* ---------------- Embed Fields ---------------- */
+
+.embed-field-value {
+  background: #1e1f22;
+  border-radius: 6px;
+  padding: 4px 6px;
+  font-size: 14px;
+  line-height: 1.35;
 }
 
-.custom-scroll::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.1);
-  border-radius: 20px;
-  border: 2px solid transparent;
-  background-clip: content-box;
-}
-
-/* ENTFERNT DAS NEXT.JS DEBUG ICON */
-next-route-announcer, #next-live-toast, portal-nextjs-feedback, nextjs-portal, #__next-build-watcher {
-  display: none !important;
+.embed-field-value--large {
+  padding: 8px 10px;
+  margin-top: 2px;
 }

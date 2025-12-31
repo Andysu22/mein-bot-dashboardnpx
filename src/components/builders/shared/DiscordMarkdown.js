@@ -1,53 +1,48 @@
 "use client";
 import React, { useMemo } from "react";
 
-function escapeHtml(raw) {
-  return String(raw ?? "")
+function escapeHtml(str) {
+  return String(str ?? "")
     .replaceAll("&", "&amp;")
     .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;")
-    .replaceAll("'", "&#39;");
+    .replaceAll(">", "&gt;");
 }
 
-function renderInlineMarkdownToHtml(escaped) {
-  let s = escaped;
-  // Code, Bold, Underline, Strike, Italic
-  s = s.replace(/`([^`]+?)`/g, (_m, inner) => `<code class="inlinecode" style="background:rgba(255,255,255,0.1);padding:2px 4px;border-radius:4px;font-family:monospace;">${inner}</code>`);
-  s = s.replace(/\*\*([\s\S]+?)\*\*/g, (_m, inner) => `<strong>${inner}</strong>`);
-  s = s.replace(/__([\s\S]+?)__/g, (_m, inner) => `<u>${inner}</u>`);
-  s = s.replace(/~~([\s\S]+?)~~/g, (_m, inner) => `<s>${inner}</s>`);
-  s = s.replace(/(^|[^*])\*([^*\n]+?)\*(?!\*)/g, (_m, pre, inner) => `${pre}<em>${inner}</em>`);
-  return s;
-}
-
-function discordMarkdownToSafeHtml(rawText) {
-  const raw = String(rawText ?? "");
-  const parts = raw.split(/```/g);
-  const out = [];
-
-  for (let i = 0; i < parts.length; i++) {
-    const chunk = parts[i] ?? "";
-    if (i % 2 === 1) { // Code block
-      const esc = escapeHtml(chunk);
-      out.push(`<pre class="codeblock" style="margin:0.5rem 0;background:rgba(0,0,0,0.3);padding:0.5rem;border-radius:0.5rem;overflow-x:auto;"><code>${esc}</code></pre>`);
-      continue;
-    }
-    const lines = chunk.split(/\r?\n/);
-    const renderedLines = lines.map((line) => {
-      const isQuote = line.startsWith("> ");
-      const content = isQuote ? line.slice(2) : line;
-      const esc = escapeHtml(content);
-      const inline = renderInlineMarkdownToHtml(esc);
-      if (isQuote) return `<div class="quote" style="border-left:4px solid rgba(88,101,242,0.6);padding-left:0.5rem;margin:0.25rem 0;">${inline}</div>`;
-      return inline;
-    });
-    out.push(renderedLines.join("<br/>"));
-  }
-  return out.join("");
+function parseInline(text) {
+  let t = escapeHtml(text);
+  t = t.replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>");
+  t = t.replace(/\*(.+?)\*/g, "<em>$1</em>");
+  t = t.replace(/`(.+?)`/g, `<code class="discord-md__inlinecode">$1</code>`);
+  t = t.replace(
+    /\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g,
+    `<a href="$2" class="discord-md__link" target="_blank" rel="noopener noreferrer">$1</a>`
+  );
+  return t;
 }
 
 export default function DiscordMarkdown({ text }) {
-  const html = useMemo(() => discordMarkdownToSafeHtml(text), [text]);
-  return <div className="discord-md break-words" dangerouslySetInnerHTML={{ __html: html }} />;
+  const html = useMemo(() => {
+    if (!text) return "";
+    const lines = String(text).split("\n");
+    const out = [];
+
+    for (const line of lines) {
+      if (line.startsWith("### ")) {
+        out.push(`<div class="discord-md__h3">${escapeHtml(line.slice(4))}</div>`); continue;
+      }
+      if (line.startsWith("## ")) {
+        out.push(`<div class="discord-md__h2">${escapeHtml(line.slice(3))}</div>`); continue;
+      }
+      if (line.startsWith("# ")) {
+        out.push(`<div class="discord-md__h1">${escapeHtml(line.slice(2))}</div>`); continue;
+      }
+      if (!line.trim()) {
+        out.push(`<div class="discord-md__spacer"></div>`); continue;
+      }
+      out.push(`<div class="discord-md__p">${parseInline(line)}</div>`);
+    }
+    return out.join("");
+  }, [text]);
+
+  return <div className="discord-md" dangerouslySetInnerHTML={{ __html: html }} />;
 }
