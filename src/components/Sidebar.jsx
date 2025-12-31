@@ -112,7 +112,12 @@ export default function Sidebar({ guildId, guildName, guildIcon }) {
             <div onClick={() => { if(!showSelector) fetchGuilds(); setShowSelector(!showSelector); }} className={`flex items-center justify-between p-3 rounded-xl transition-all border ${showSelector ? "bg-white/5 border-white/10" : "bg-white/[0.03] border-white/5 hover:bg-white/5"} cursor-pointer`}>
               <div className="flex items-center gap-3 overflow-hidden text-left">
                 <div className="w-8 h-8 rounded-lg bg-[#5865F2] flex-shrink-0 flex items-center justify-center font-bold text-xs text-white overflow-hidden">
-                  {guildIcon ? <img src={guildIcon} className="h-full w-full object-cover" alt="" /> : (guildName?.charAt(0) || "?")}
+                  {guildIcon ? (
+                    <img src={guildIcon} className="h-full w-full object-cover" alt="" />
+                  ) : (
+                    // Sicherstellen, dass guildName ein String ist, bevor charAt aufgerufen wird
+                    (typeof guildName === 'string' && guildName.length > 0) ? guildName.charAt(0) : "?"
+                  )}
                 </div>
                 <span className="text-sm font-bold text-white truncate">{guildName || "Lade..."}</span>
               </div>

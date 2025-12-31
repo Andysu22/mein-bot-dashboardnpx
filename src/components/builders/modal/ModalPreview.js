@@ -87,16 +87,22 @@ function PreviewSelect({ label, description, required, placeholder, options, val
       {/* HIER WURDE DESCRIPTION EINGEFÜGT */}
       {description && <div className="text-xs text-[#B5BAC1]">{description}</div>}
       
-      <button ref={anchorRef} type="button" onClick={() => setOpen((v) => !v)} className={cn("w-full h-10 flex items-center justify-between gap-2 px-3 rounded-[6px] bg-[#17181b] text-sm text-[#DBDEE1] ring-1 ring-[#3b3d44] outline-none cursor-pointer", open ? "ring-2 ring-[#5865F2]" : "")}>
+      {/* ÄNDERUNG HIER: <div> statt <button> für den Container */}
+      <div 
+        ref={anchorRef} 
+        onClick={() => setOpen((v) => !v)} 
+        className={cn("w-full h-10 flex items-center justify-between gap-2 px-3 rounded-[6px] bg-[#17181b] text-sm text-[#DBDEE1] ring-1 ring-[#3b3d44] outline-none cursor-pointer select-none", open ? "ring-2 ring-[#5865F2]" : "")}
+      >
         <div className="flex items-center gap-2 min-w-0">
           {selected?.emoji && <span className="text-base">{selected.emoji}</span>}
           <div className={cn("truncate", selected ? "text-[#DBDEE1]" : "text-[#949BA4]")}>{selected ? selected.label : placeholder}</div>
         </div>
         <div className="flex items-center gap-1">
+          {/* Dieser innere Button hat den Fehler verursacht */}
           {showClear && value && <button type="button" onClick={(e) => { e.stopPropagation(); onClear ? onClear() : onChange(""); }} className="h-7 w-7 inline-flex items-center justify-center rounded-[6px] text-[#B5BAC1] hover:text-[#DBDEE1] hover:bg-white/5 cursor-pointer">×</button>}
           <span className="w-5 text-center text-[#B5BAC1] text-base leading-none">{open ? "▴" : "▾"}</span>
         </div>
-      </button>
+      </div>
       {open && portalRoot ? createPortal(dropdown, portalRoot) : null}
     </div>
   );

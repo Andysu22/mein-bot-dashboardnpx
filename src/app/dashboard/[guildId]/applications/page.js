@@ -459,9 +459,15 @@ export default function ApplicationsPage() {
   const [reviewEmbed, setReviewEmbed] = useState(defaultReviewEmbed());
 
   const [isPreviewMinimized, setIsPreviewMinimized] = useState(false);
-  const [previewY, setPreviewY] = useState(0);
-  const [isDragging, setIsDragging] = useState(false);
-  const dragOffsetRef = useRef(0);
+  const [previewY, setPreviewY] = useState(0); 
+  const [isDragging, setIsDragging] = useState(false); 
+  const dragStartRef = useRef(0); // Umbenannt zu dragStartRef wie im Ticket System
+
+  const handleDragStart = (e) => {
+    setIsDragging(true); 
+    dragStartRef.current = e.clientY - previewY;
+    document.body.style.userSelect = "none"; // Verhindert, dass Text markiert wird beim Ziehen
+  };
 
   const flashFormMsg = useCallback((msg) => {
     setFormMsg(msg);
@@ -533,28 +539,42 @@ export default function ApplicationsPage() {
     if (!currentGuild?.icon) return "https://cdn.discordapp.com/embed/avatars/0.png";
     return `https://cdn.discordapp.com/icons/${currentGuild.id}/${currentGuild.icon}.png`;
   }, [currentGuild]);
+  const handleDragMove = useCallback((e) => {
+    if (typeof window === 'undefined') return;
 
-  // drag preview
-  const handleDragStart = (e) => {
-    setIsDragging(true);
-    dragOffsetRef.current = e.clientY - previewY;
-  };
-  const handleDragMove = useCallback(
-    (e) => {
-      if (!isDragging) return;
-      const newY = e.clientY - dragOffsetRef.current;
-      setPreviewY(Math.max(-250, Math.min(250, newY)));
-    },
-    [isDragging, previewY]
-  );
-  const handleDragEnd = useCallback(() => setIsDragging(false), []);
+    let newY = e.clientY - dragStartRef.current;
+    
+    // Dynamische Grenzen berechnen (verhindert Rausziehen aus dem Bild)
+    const windowHeight = window.innerHeight;
+    const startPos = (windowHeight / 2) + 120;
+    
+    // Limits setzen (80px von oben, 50px von unten)
+    const maxUp = 80 - startPos; 
+    const maxDown = windowHeight - 50 - startPos;
+
+    // Clamping
+    if (newY < maxUp) newY = maxUp;
+    if (newY > maxDown) newY = maxDown;
+
+    setPreviewY(newY);
+  }, []);
+
+  const handleDragEnd = useCallback(() => {
+    setIsDragging(false); 
+    document.body.style.userSelect = ""; // Textauswahl wieder erlauben
+  }, []);
+
   useEffect(() => {
-    if (!isDragging) return;
-    window.addEventListener("mousemove", handleDragMove);
-    window.addEventListener("mouseup", handleDragEnd);
+    if (isDragging) {
+        window.addEventListener("mousemove", handleDragMove);
+        window.addEventListener("mouseup", handleDragEnd);
+    } else {
+        window.removeEventListener("mousemove", handleDragMove);
+        window.removeEventListener("mouseup", handleDragEnd);
+    }
     return () => {
-      window.removeEventListener("mousemove", handleDragMove);
-      window.removeEventListener("mouseup", handleDragEnd);
+        window.removeEventListener("mousemove", handleDragMove);
+        window.removeEventListener("mouseup", handleDragEnd);
     };
   }, [isDragging, handleDragMove, handleDragEnd]);
 
@@ -1027,44 +1047,32 @@ export default function ApplicationsPage() {
           >
             <div className="bg-[#111214] border border-white/10 rounded-lg shadow-2xl ring-1 ring-white/5 overflow-hidden flex flex-col max-h-[calc(100vh-6rem)]">
               <div
-                onMouseDown={(e) => {
-                  setIsDragging(true);
-                  dragOffsetRef.current = e.clientY - previewY;
-                }}
-                className="bg-[#1e1f22] border-b border-white/5 p-3 flex items-center justify-between cursor-grab active:cursor-grabbing select-none"
-              >
-                <div className="flex items-center gap-2">
-                  <GripHorizontal className="w-4 h-4 text-gray-600" />
-                  <span className="text-gray-400 font-bold text-xs uppercase tracking-wider">Live Preview</span>
-                </div>
-                <div className="flex gap-2">
-                  <span className="text-[10px] bg-white/5 px-2 py-0.5 rounded text-gray-500">
-                    {editorTab === "config"
-                      ? "Allgemein"
-                      : editorTab === "modal"
-                      ? "Formular"
-                      : editorTab === "response"
-                      ? "Bot Antwort"
-                      : editorTab === "review"
-                      ? "Review"
-                      : "Panel"}
-                  </span>
-                  <button onClick={() => setIsPreviewMinimized(true)} className="text-gray-500 hover:text-white transition-colors">
-                    <Minimize2 className="w-4 h-4" />
-                  </button>
-                </div>
-              </div>
+  onMouseDown={handleDragStart} // <--- HIER WAR DER FEHLER (vorher war hier eine Inline-Funktion)
+  className="bg-[#1e1f22] border-b border-white/5 p-3 flex items-center justify-between cursor-grab active:cursor-grabbing select-none"
+>
+  <div className="flex items-center gap-2">
+    <GripHorizontal className="w-4 h-4 text-gray-600" />
+    <span className="text-gray-400 font-bold text-xs uppercase tracking-wider">Live Preview</span>
+  </div>
+  <div className="flex gap-2">
+    <span className="text-[10px] bg-white/5 px-2 py-0.5 rounded text-gray-500">
+      {editorTab === "config"
+        ? "Allgemein"
+        : editorTab === "modal"
+        ? "Formular"
+        : editorTab === "response"
+        ? "Bot Antwort"
+        : editorTab === "review"
+        ? "Review"
+        : "Panel"}
+    </span>
+    <button onClick={() => setIsPreviewMinimized(true)} className="text-gray-500 hover:text-white transition-colors">
+      <Minimize2 className="w-4 h-4" />
+    </button>
+  </div>
+</div>
 
-              <div
-                className="p-5 overflow-y-auto custom-scrollbar"
-                onMouseMove={(e) => {
-                  if (!isDragging) return;
-                  const newY = e.clientY - dragOffsetRef.current;
-                  setPreviewY(Math.max(-250, Math.min(250, newY)));
-                }}
-                onMouseUp={() => setIsDragging(false)}
-                onMouseLeave={() => setIsDragging(false)}
-              >
+              <div className="p-5 overflow-y-auto custom-scrollbar">
                 {editorTab === "modal" && <ModalPreview modal={modal} guildIconUrl={guildIconUrl} />}
 
                 {editorTab === "panel" && (

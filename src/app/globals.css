@@ -37,7 +37,7 @@ html, body {
 /* ---------------- Discord Markdown ---------------- */
 
 .discord-md { width: 100%; }
-.discord-md__p { margin: 0; }
+.discord-md__p { margin: 0; line-height: 1.375rem; }
 .discord-md__spacer { height: .35rem; }
 
 .discord-md__h1,
@@ -51,12 +51,42 @@ html, body {
 .discord-md__h2 { font-size: 1.05rem; }
 .discord-md__h3 { font-size: .98rem; }
 
+/* ✅ FIX: Inline Code (`...`) */
+/* Hintergrund dunkel, Text hell, Padding für den Box-Look */
 .discord-md__inlinecode {
-  background: rgba(0,0,0,.35);
+  background: #111214;
+  color: #dbdee1;
   padding: 2px 4px;
+  border-radius: 3px;
+  font-family: "Consolas", "Monaco", "Andale Mono", "Ubuntu Mono", monospace;
+  font-size: 0.85em;
+}
+
+/* ✅ FIX: Code Blocks (```...```) - "Die große Box" */
+.discord-md__codeblock {
+  background: #111214 !important; /* Sehr dunkler Hintergrund */
+  color: #e1e1e1 !important;      /* Helle Schrift erzwingen */
+  border: 1px solid #1e1f22;
   border-radius: 4px;
-  font-family: ui-monospace, monospace;
-  font-size: .92em;
+  padding: 8px;
+  font-family: "Consolas", "Monaco", "Andale Mono", "Ubuntu Mono", monospace;
+  font-size: 0.85rem;
+  white-space: pre-wrap;          /* Zeilenumbrüche erhalten */
+  margin: 6px 0;
+  display: block;
+  overflow-x: auto;               /* Scrollen bei zu langem Text */
+}
+
+/* ⚠️ SUPER WICHTIG: 
+   Hier zwingen wir ALLE Elemente INNERHALB des Codeblocks (span, code, p),
+   die Farbe des Eltern-Elements zu erben. 
+   Oft erstellen Parser <span> Elemente für Syntax-Highlighting, die dunkel sind. 
+   Das überschreiben wir hier. 
+*/
+.discord-md__codeblock * {
+  background-color: transparent !important;
+  color: inherit !important;
+  font-family: inherit !important;
 }
 
 .discord-md__link {
@@ -68,14 +98,25 @@ html, body {
 /* ---------------- Embed Fields ---------------- */
 
 .embed-field-value {
-  background: #1e1f22;
-  border-radius: 6px;
-  padding: 4px 6px;
+  /* Kein Hintergrund hier! Das verhindert das "Box in Box"-Problem */
   font-size: 14px;
-  line-height: 1.35;
+  line-height: 1.375rem;
+  color: #dbdee1;
 }
 
 .embed-field-value--large {
-  padding: 8px 10px;
   margin-top: 2px;
+}
+
+/* Kleine Helfer */
+.discord-md__subtext {
+  font-size: 0.75rem;
+  color: #949ba4;
+  margin-top: -4px;
+}
+.discord-md__quote {
+  border-left: 4px solid #4e5058;
+  padding-left: 8px;
+  color: #dbdee1;
+  font-size: 0.9em;
 }

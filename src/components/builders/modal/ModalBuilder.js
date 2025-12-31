@@ -4,7 +4,7 @@ import React, { useState, useRef, useEffect } from "react";
 import { nanoid } from "nanoid";
 import {
   DndContext,
-  closestCenter,
+  // closestCenter, // ENTFERNT: Verursacht nervöses Springen
   PointerSensor,
   useSensor,
   useSensors
@@ -85,13 +85,11 @@ function defaultComponent(kind = KINDS.TEXT_INPUT) {
     };
   }
 
-  // Für User/Role/Channel Selects
   return { ...base, min_values: 1, max_values: 1 };
 }
 
 // --- COMPONENTS ---
 
-// 1. Add Field Dropdown Menu
 function AddFieldMenu({ onAdd, disabled }) {
   const [isOpen, setIsOpen] = useState(false);
   const containerRef = useRef(null);
@@ -158,7 +156,6 @@ function AddFieldMenu({ onAdd, disabled }) {
   );
 }
 
-// 2. Sortable Option Row (Inner)
 function SortableOptionRow({
   option,
   onChange,
@@ -171,11 +168,9 @@ function SortableOptionRow({
   isDragging
 }) {
   const style = {
+    // Zurück zu Transform wie im funktionierenden Builder
     transform: CSS.Transform.toString(transform),
     transition,
-    opacity: isDragging ? 0.4 : 1,
-    position: "relative",
-    zIndex: isDragging ? 999 : "auto"
   };
 
   return (
@@ -183,8 +178,9 @@ function SortableOptionRow({
       ref={setNodeRef}
       style={style}
       className={cn(
-        "group flex items-start gap-3 bg-[#1e1f22] border border-white/5 p-3 rounded-lg mb-2 transition-all hover:border-white/10 hover:bg-[#232428]",
-        isDragging && "border-[#5865F2] shadow-lg ring-1 ring-[#5865F2] bg-[#2b2d31]"
+        // WICHTIG: "transition-all" entfernt! Das hat das Dragging verzögert.
+        "group flex items-start gap-3 bg-[#1e1f22] border border-white/5 p-3 rounded-lg mb-2 hover:border-white/10 hover:bg-[#232428]",
+        isDragging && "opacity-50 border-[#5865F2] shadow-lg ring-1 ring-[#5865F2] bg-[#2b2d31]"
       )}
     >
       <button
@@ -215,6 +211,7 @@ function SortableOptionRow({
             placeholder="value"
           />
         </div>
+        {/* ... Rest der Felder gleich ... */}
         <div className="space-y-1.5">
           <label className="text-[10px] uppercase font-bold text-gray-500 pl-0.5 flex items-center gap-1">
             <AlignLeft className="w-3 h-3" /> Beschreibung
@@ -267,9 +264,9 @@ function SortableOptionItem(props) {
   );
 }
 
-// 3. Option List Container
 function OptionListEditor({ options, onChange }) {
-  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
+  // Distance: 6 wie im funktionierenden Builder
+  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }));
 
   const handleDragEnd = (event) => {
     const { active, over } = event;
@@ -308,8 +305,9 @@ function OptionListEditor({ options, onChange }) {
           <Plus className="w-3.5 h-3.5" /> Option
         </button>
       </div>
-
-      <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+      
+      {/* WICHTIG: collisionDetection entfernt (nutzt Standard) */}
+      <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
         <SortableContext items={options.map((o) => o.id)} strategy={verticalListSortingStrategy}>
           <div className="flex flex-col">{options.map((opt) => <SortableOptionItem key={opt.id} option={opt} onChange={handleChange} onDelete={handleDelete} />)}</div>
         </SortableContext>
@@ -324,7 +322,6 @@ function OptionListEditor({ options, onChange }) {
   );
 }
 
-// 4. Component Row (Outer)
 function SortableComponentRow({
   component,
   onChange,
@@ -339,46 +336,29 @@ function SortableComponentRow({
   const style = {
     transform: CSS.Transform.toString(transform),
     transition,
-    opacity: isDragging ? 0.5 : 1,
-    position: "relative",
-    zIndex: isDragging ? 50 : "auto"
   };
 
   const getIcon = (kind) => {
     switch (kind) {
-      case KINDS.TEXT_INPUT:
-        return <TextCursor className="w-5 h-5" />;
-      case KINDS.STRING_SELECT:
-        return <List className="w-5 h-5" />;
-      case KINDS.USER_SELECT:
-        return <Users className="w-5 h-5" />;
-      case KINDS.ROLE_SELECT:
-        return <Shield className="w-5 h-5" />;
-      case KINDS.CHANNEL_SELECT:
-        return <Hash className="w-5 h-5" />;
-      case KINDS.MENTIONABLE_SELECT:
-        return <AtSign className="w-5 h-5" />;
-      default:
-        return <List className="w-5 h-5" />;
+      case KINDS.TEXT_INPUT: return <TextCursor className="w-5 h-5" />;
+      case KINDS.STRING_SELECT: return <List className="w-5 h-5" />;
+      case KINDS.USER_SELECT: return <Users className="w-5 h-5" />;
+      case KINDS.ROLE_SELECT: return <Shield className="w-5 h-5" />;
+      case KINDS.CHANNEL_SELECT: return <Hash className="w-5 h-5" />;
+      case KINDS.MENTIONABLE_SELECT: return <AtSign className="w-5 h-5" />;
+      default: return <List className="w-5 h-5" />;
     }
   };
 
   const getLabel = (kind) => {
     switch (kind) {
-      case KINDS.TEXT_INPUT:
-        return "Text Input";
-      case KINDS.STRING_SELECT:
-        return "Dropdown Menu";
-      case KINDS.USER_SELECT:
-        return "User Select";
-      case KINDS.ROLE_SELECT:
-        return "Role Select";
-      case KINDS.CHANNEL_SELECT:
-        return "Channel Select";
-      case KINDS.MENTIONABLE_SELECT:
-        return "Mentionable Select";
-      default:
-        return "Component";
+      case KINDS.TEXT_INPUT: return "Text Input";
+      case KINDS.STRING_SELECT: return "Dropdown Menu";
+      case KINDS.USER_SELECT: return "User Select";
+      case KINDS.ROLE_SELECT: return "Role Select";
+      case KINDS.CHANNEL_SELECT: return "Channel Select";
+      case KINDS.MENTIONABLE_SELECT: return "Mentionable Select";
+      default: return "Component";
     }
   };
 
@@ -387,8 +367,9 @@ function SortableComponentRow({
       ref={setNodeRef}
       style={style}
       className={cn(
-        "rounded-xl border bg-[#1a1b1e] transition-all overflow-hidden mb-4",
-        isDragging ? "border-[#5865F2] shadow-xl ring-1 ring-[#5865F2]" : "border-white/5 hover:border-white/10"
+        // WICHTIG: "transition-all" entfernt!
+        "rounded-xl border bg-[#1a1b1e] overflow-hidden mb-4",
+        isDragging ? "opacity-50 border-[#5865F2] shadow-xl ring-1 ring-[#5865F2]" : "border-white/5 hover:border-white/10"
       )}
     >
       {/* Header */}
@@ -441,7 +422,6 @@ function SortableComponentRow({
       {!component.collapsed && (
         <div className="p-5 bg-[#18191c]">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* Left Column */}
             <div className="space-y-4">
               <div className="space-y-1.5">
                 <label className="text-[11px] uppercase font-bold text-gray-400 pl-1 flex items-center gap-1.5">
@@ -481,7 +461,6 @@ function SortableComponentRow({
               </div>
             </div>
 
-            {/* Right Column */}
             <div className="space-y-4">
               <div className="space-y-1.5">
                 <label className="text-[11px] uppercase font-bold text-gray-400 pl-1 flex items-center gap-1.5">
@@ -541,7 +520,6 @@ function SortableComponentRow({
             </div>
           </div>
 
-          {/* Options Editor (Only for String Select) */}
           {component.kind === KINDS.STRING_SELECT && (
             <OptionListEditor options={component.options || []} onChange={(newOpts) => onChange({ ...component, options: newOpts })} />
           )}
@@ -568,12 +546,9 @@ function SortableComponentItem(props) {
 
 // --- MAIN BUILDER ---
 export default function ModalBuilder({ data, onChange }) {
-  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
+  // Distance: 6 wie im funktionierenden Builder
+  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }));
 
-  // --- Normalization ---
-  // Historisch gab es gespeicherte Builder-Daten ohne IDs (oder mit falschen Keys).
-  // Das bricht DnD-Kit (SortableContext braucht stabile IDs). Tickets funktionierte
-  // meist, Bewerbungen nicht immer. Daher normalisieren wir hier defensiv.
   const normalizeModalData = (incoming) => {
     const safe = incoming && typeof incoming === "object" ? { ...incoming } : { title: "", components: [] };
     const comps = Array.isArray(safe.components) ? safe.components : [];
@@ -595,7 +570,6 @@ export default function ModalBuilder({ data, onChange }) {
         };
 
         if (kind === KINDS.TEXT_INPUT) {
-          // Wir akzeptieren sowohl `style` als Zahl als auch String.
           const styleRaw = c.style;
           const style = styleRaw === 2 || styleRaw === "paragraph" ? 2 : 1;
           return {
@@ -622,7 +596,6 @@ export default function ModalBuilder({ data, onChange }) {
           };
         }
 
-        // User/Role/Channel/Mentionable Select
         return {
           ...base,
           min_values: Number.isFinite(c.min_values) ? c.min_values : 1,
@@ -633,16 +606,13 @@ export default function ModalBuilder({ data, onChange }) {
     return { ...safe, title: String(safe.title ?? "").slice(0, 45), components: normComps };
   };
 
-  // Auto-Fix fehlender IDs/Keys beim Laden (wichtig für Bewerbungen)
   useEffect(() => {
     try {
       const normalized = normalizeModalData(data);
       if (JSON.stringify(normalized) !== JSON.stringify(data)) {
         onChange(normalized);
       }
-      // eslint-disable-next-line no-empty
     } catch {}
-    // Wir wollen bewusst auf Änderungen von `data` reagieren.
   }, [data]);
 
   const onDragEnd = (event) => {
@@ -694,7 +664,8 @@ export default function ModalBuilder({ data, onChange }) {
           <AddFieldMenu onAdd={addComp} disabled={(data.components || []).length >= MAX_COMPONENTS} />
         </div>
 
-        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
+        {/* WICHTIG: collisionDetection entfernt (nutzt Standard) */}
+        <DndContext sensors={sensors} onDragEnd={onDragEnd}>
           <SortableContext items={(data.components || []).map((c) => c.id)} strategy={verticalListSortingStrategy}>
             <div className="flex flex-col gap-1">
               {(data.components || []).map((comp) => (
