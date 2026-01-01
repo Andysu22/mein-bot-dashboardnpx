@@ -28,8 +28,9 @@ import {
   GripHorizontal,
   Eye,
   X,
-  Copy, // <--- Hinzufügen
-  Send  // <--- Hinzufügen
+  Copy,
+  ArrowLeft,
+  Send
 } from "lucide-react";
 import { useParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
@@ -42,21 +43,22 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 
+import { Skeleton } from "@/components/ui/skeleton";
+import { cn } from "@/lib/utils";
+
 import ModalBuilder from "@/components/builders/modal/ModalBuilder";
 import ModalPreview from "@/components/builders/modal/ModalPreview";
 import EmbedBuilder from "@/components/builders/embed/EmbedBuilder";
 import EmbedPreview from "@/components/builders/embed/EmbedPreview";
 import DiscordMarkdown from "@/components/builders/shared/DiscordMarkdown";
 
-function cn(...xs) {
-  return xs.filter(Boolean).join(" ");
-}
+import Link from "next/link";
+// --- Helper Functions ---
+
 function truncate(s, max) {
   const str = String(s ?? "");
   return str.length > max ? str.slice(0, max - 1) + "…" : str;
 }
-
-// --- UI HELPERS ---
 
 function CollapsibleSection({ title, icon: Icon, children, defaultOpen = true }) {
   const [isOpen, setIsOpen] = useState(defaultOpen);
@@ -72,20 +74,20 @@ function CollapsibleSection({ title, icon: Icon, children, defaultOpen = true })
   }, [isOpen]);
 
   return (
-    <div className="border border-white/10 rounded-md bg-[#16171a] transition-all duration-200">
+    <div className="border border-border rounded-md bg-card transition-all duration-200 shadow-sm">
       <button
         type="button"
         onClick={() => setIsOpen(!isOpen)}
-        className="w-full flex items-center justify-between px-4 py-3 bg-[#1e1f22] hover:bg-[#232428] transition-colors rounded-t-md"
+        className="w-full flex items-center justify-between px-4 py-3 bg-muted/30 hover:bg-muted/50 transition-colors rounded-t-md"
       >
-        <div className="flex items-center gap-2.5 text-gray-200 font-medium text-sm">
-          {Icon && <Icon className="w-4 h-4 text-[#5865F2]" />}
+        <div className="flex items-center gap-2.5 text-foreground font-medium text-sm">
+          {Icon && <Icon className="w-4 h-4 text-primary" />}
           <span>{title}</span>
         </div>
         {isOpen ? (
-          <ChevronUp className="w-4 h-4 text-gray-500" />
+          <ChevronUp className="w-4 h-4 text-muted-foreground" />
         ) : (
-          <ChevronDown className="w-4 h-4 text-gray-500" />
+          <ChevronDown className="w-4 h-4 text-muted-foreground" />
         )}
       </button>
       <div
@@ -95,7 +97,7 @@ function CollapsibleSection({ title, icon: Icon, children, defaultOpen = true })
         )}
         style={{ overflow: isAnimationDone && isOpen ? "visible" : "hidden" }} 
       >
-        <div className="p-5 space-y-4 border-t border-white/5">{children}</div>
+        <div className="p-5 space-y-4 border-t border-border">{children}</div>
       </div>
     </div>
   );
@@ -170,8 +172,8 @@ function VariableDropdown({ modal }) {
         className={cn(
             "flex items-center gap-2 px-4 py-2 rounded-md border text-xs font-bold uppercase tracking-wider transition-all min-w-[140px] md:min-w-[180px] justify-between h-9 w-full md:w-auto",
             copyFeedback 
-                ? "bg-green-500/10 border-green-500/50 text-green-400" 
-                : "bg-[#111214] border-white/10 text-gray-300 hover:border-[#5865F2] hover:text-white"
+                ? "bg-green-500/10 border-green-500/50 text-green-500" 
+                : "bg-card border-border text-muted-foreground hover:border-primary hover:text-primary hover:bg-muted/50"
         )}
       >
         <div className="flex items-center gap-2 truncate">
@@ -182,8 +184,8 @@ function VariableDropdown({ modal }) {
       </button>
 
       {isOpen && (
-        <div className="absolute top-full right-0 mt-2 z-50 w-[280px] md:w-[300px] bg-[#1e1f22] border border-white/10 rounded-lg shadow-2xl overflow-hidden animate-in fade-in slide-in-from-top-1 duration-100 max-h-[400px] overflow-y-auto custom-scrollbar ring-1 ring-black/50">
-            <div className="px-3 py-2 text-[10px] font-bold text-gray-500 uppercase bg-[#111214] border-b border-white/5 sticky top-0 flex justify-between items-center">
+        <div className="absolute top-full right-0 mt-2 z-50 w-[280px] md:w-[300px] bg-card border border-border rounded-lg shadow-2xl overflow-hidden animate-in fade-in slide-in-from-top-1 duration-100 max-h-[400px] overflow-y-auto custom-scrollbar ring-1 ring-black/10">
+            <div className="px-3 py-2 text-[10px] font-bold text-muted-foreground uppercase bg-muted/50 border-b border-border sticky top-0 flex justify-between items-center">
                 <span>Standard</span>
             </div>
             <div className="p-1 space-y-0.5">
@@ -191,20 +193,20 @@ function VariableDropdown({ modal }) {
                     <button
                         key={v.value}
                         onClick={() => handleCopy(v.value)}
-                        className="w-full text-left px-3 py-2 rounded-[4px] hover:bg-[#5865F2] hover:text-white group transition-colors flex flex-col gap-0.5"
+                        className="w-full text-left px-3 py-2 rounded-[4px] hover:bg-primary hover:text-primary-foreground group transition-colors flex flex-col gap-0.5"
                     >
                         <div className="flex items-center justify-between">
-                            <span className="font-mono text-xs font-bold text-gray-200 group-hover:text-white">{v.value}</span>
+                            <span className="font-mono text-xs font-bold text-foreground group-hover:text-primary-foreground">{v.value}</span>
                             <Copy className="w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity" />
                         </div>
-                        <span className="text-[10px] text-gray-500 group-hover:text-white/80">{v.desc}</span>
+                        <span className="text-[10px] text-muted-foreground group-hover:text-primary-foreground/80">{v.desc}</span>
                     </button>
                 ))}
             </div>
 
             {formVars.length > 0 && (
                 <>
-                    <div className="px-3 py-2 text-[10px] font-bold text-gray-500 uppercase bg-[#111214] border-y border-white/5 sticky top-0 mt-1">
+                    <div className="px-3 py-2 text-[10px] font-bold text-muted-foreground uppercase bg-muted/50 border-y border-border sticky top-0 mt-1">
                         Formular Felder
                     </div>
                     <div className="p-1 space-y-0.5">
@@ -212,13 +214,13 @@ function VariableDropdown({ modal }) {
                             <button
                                 key={v.value}
                                 onClick={() => handleCopy(v.value)}
-                                className="w-full text-left px-3 py-2 rounded-[4px] hover:bg-[#5865F2] hover:text-white group transition-colors flex flex-col gap-0.5"
+                                className="w-full text-left px-3 py-2 rounded-[4px] hover:bg-primary hover:text-primary-foreground group transition-colors flex flex-col gap-0.5"
                             >
                                 <div className="flex items-center justify-between">
-                                    <span className="font-mono text-xs font-bold text-gray-200 group-hover:text-white truncate max-w-[200px]">{v.value}</span>
+                                    <span className="font-mono text-xs font-bold text-foreground group-hover:text-primary-foreground truncate max-w-[200px]">{v.value}</span>
                                     <Copy className="w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity" />
                                 </div>
-                                <span className="text-[10px] text-gray-500 group-hover:text-white/80 truncate">{v.desc}</span>
+                                <span className="text-[10px] text-muted-foreground group-hover:text-primary-foreground/80 truncate">{v.desc}</span>
                             </button>
                         ))}
                     </div>
@@ -230,17 +232,139 @@ function VariableDropdown({ modal }) {
   );
 }
 
-function StatsCard({ title, value, icon: Icon, colorClass = "text-white" }) {
+// ---------------- STATS CARD ----------------
+function StatsCard({ title, value, icon: Icon, colorClass = "text-foreground", loading }) {
+  const [showTooltip, setShowTooltip] = useState(false);
+
+  // 1. Kurzform (z.B. 9.9k)
+  const formatCompactNumber = (num) => {
+     if (typeof num !== "number") return num;
+     if (num >= 1000000) return (Math.floor(num / 100000) / 10) + "m";
+     if (num >= 1000) return (Math.floor(num / 100) / 10) + "k";
+     return num;
+  };
+
+  // 2. Langform (z.B. 9.923)
+  const formatFullNumber = (num) => {
+      if (typeof num !== "number") return num;
+      return new Intl.NumberFormat('de-DE').format(num);
+  };
+
   return (
-    <Card className="bg-[#111214] border-white/10 shadow-sm flex items-center p-4 gap-4 rounded-lg hover:border-white/20 transition-colors">
-      <div className={cn("p-3 rounded-md bg-white/5", colorClass)}>
-        <Icon className="w-5 h-5" />
+    <Card className="flex flex-row items-center gap-3 p-3 md:gap-4 md:p-4 border-border shadow-sm hover:border-primary/20 transition-all duration-300 overflow-visible">
+      
+      {/* ICON: Kompakter auf Handy */}
+      <div className={cn(
+        "flex items-center justify-center w-10 h-10 md:w-12 md:h-12 rounded-xl bg-muted/50 shrink-0", 
+        colorClass
+      )}>
+        <Icon className="w-5 h-5 md:w-6 md:h-6" />
       </div>
-      <div>
-        <p className="text-xs text-gray-400 font-bold uppercase tracking-wider">{title}</p>
-        <p className="text-2xl font-bold text-white tracking-tight">{value}</p>
+      
+      {/* TEXT & WERT */}
+      <div className="flex flex-col space-y-0.5 md:space-y-1 min-w-0">
+        <p className="text-[10px] md:text-xs font-bold uppercase tracking-wider text-muted-foreground truncate">
+            {title}
+        </p>
+
+        {loading ? (
+            <Skeleton className="h-6 w-12 md:h-7 md:w-16 rounded-md bg-muted" />
+        ) : (
+            <div 
+                className="relative w-fit"
+                onMouseEnter={() => setShowTooltip(true)}
+                onMouseLeave={() => setShowTooltip(false)}
+                onClick={() => setShowTooltip(!showTooltip)}
+            >
+                {/* ZAHL: Responsive Größen */}
+                <p className="text-lg md:text-2xl font-black text-foreground tracking-tight leading-none cursor-pointer select-none">
+                    {formatCompactNumber(value)}
+                </p>
+
+                {/* MODERNER TOOLTIP */}
+                <div 
+                    className={cn(
+                        "absolute bottom-full left-1/2 -translate-x-1/2 mb-2 flex-col items-center z-50 whitespace-nowrap transition-opacity duration-200",
+                        showTooltip ? "flex opacity-100" : "hidden opacity-0"
+                    )}
+                >
+                    <span className="relative z-10 p-2 text-xs leading-none text-white whitespace-no-wrap bg-neutral-900 shadow-lg rounded-md font-bold">
+                        {formatFullNumber(value)}
+                    </span>
+                    <div className="w-3 h-3 -mt-2 rotate-45 bg-neutral-900 z-0"></div>
+                </div>
+            </div>
+        )}
       </div>
     </Card>
+  );
+}
+
+// NEU: Kompaktes Skeleton (passend zu den neuen Höhen)
+function TicketContentSkeleton() {
+  return (
+    <div className="grid grid-cols-1 xl:grid-cols-[380px_1fr] gap-6 h-auto xl:h-[calc(100vh-380px)] min-h-[400px] animate-in fade-in duration-500">
+        
+        {/* LINKE SPALTE (Kompakter: h-[350px] mobil) */}
+        <Card className="bg-card border-border flex flex-col overflow-hidden shadow-sm h-[350px] xl:h-auto rounded-lg">
+          <CardHeader className="bg-muted/30 border-b border-border py-3.5 px-4 flex flex-row justify-between items-center space-y-0">
+            <Skeleton className="h-4 w-32" />
+            <Skeleton className="h-5 w-8 rounded-full" />
+          </CardHeader>
+
+          <div className="flex-1 overflow-hidden p-2 space-y-1">
+            {[...Array(5)].map((_, i) => (
+              <div key={i} className="w-full p-3 rounded-md border border-transparent space-y-2.5 mb-1">
+                <Skeleton className="h-4 w-[85%] rounded-sm" />
+                <div className="flex justify-between items-center mt-1">
+                      <Skeleton className="h-3 w-24 rounded-sm" />
+                      <Skeleton className="h-3 w-16 rounded-sm" />
+                </div>
+              </div>
+            ))}
+          </div>
+        </Card>
+
+        {/* RECHTE SPALTE (Kompakter: h-[450px] mobil) */}
+        <Card className="bg-card border-border flex flex-col shadow-sm h-[450px] xl:h-auto rounded-lg">
+          <div className="bg-muted/30 border-b border-border p-4 flex justify-between items-center shrink-0">
+            <div className="flex items-center gap-3">
+               <Skeleton className="w-5 h-5 rounded-sm" />
+               <Skeleton className="h-5 w-48 rounded-md" />
+            </div>
+            <div className="flex gap-3">
+               <Skeleton className="h-4 w-24 rounded-md" />
+               <Skeleton className="h-5 w-16 rounded-md bg-muted" />
+            </div>
+          </div>
+
+          <div className="flex-1 p-6 space-y-8 overflow-hidden bg-muted/20">
+            <div className="flex gap-3">
+              <Skeleton className="w-9 h-9 rounded-full shrink-0" />
+              <div className="space-y-2 flex-1 max-w-[80%]">
+                <div className="flex items-baseline gap-2">
+                  <Skeleton className="h-4 w-24 rounded-sm" />
+                  <Skeleton className="h-3 w-24 rounded-sm opacity-50" />
+                </div>
+                <div className="space-y-1.5">
+                    <Skeleton className="h-4 w-full rounded-sm" />
+                    <Skeleton className="h-4 w-[90%] rounded-sm" />
+                </div>
+              </div>
+            </div>
+             <div className="flex gap-3">
+              <Skeleton className="w-9 h-9 rounded-full shrink-0 bg-primary/20" />
+              <div className="space-y-2 flex-1 max-w-[75%]">
+                 <div className="flex items-baseline gap-2">
+                  <Skeleton className="h-4 w-32 rounded-sm" />
+                  <Skeleton className="h-3 w-24 rounded-sm opacity-50" />
+                </div>
+                <Skeleton className="h-4 w-full rounded-sm" />
+              </div>
+            </div>
+          </div>
+        </Card>
+      </div>
   );
 }
 
@@ -284,7 +408,7 @@ function DiscordSelect({ label, value, onChange, options, placeholder, icon: Ico
 
   return (
     <div className="space-y-1.5 w-full" ref={containerRef}>
-      <Label className="text-gray-400 text-[11px] uppercase font-bold tracking-wider pl-0.5">
+      <Label className="text-muted-foreground text-[11px] uppercase font-bold tracking-wider pl-0.5">
         {label}
       </Label>
 
@@ -292,9 +416,9 @@ function DiscordSelect({ label, value, onChange, options, placeholder, icon: Ico
         <div
           onClick={() => setIsOpen(!isOpen)}
           className={cn(
-            "w-full bg-[#1e1f22] border border-black/20 text-gray-200 rounded-sm px-3 py-2 text-sm cursor-pointer flex items-center justify-between transition-all hover:bg-[#232428] hover:border-black/40",
+            "w-full bg-muted/30 border border-input text-foreground rounded-sm px-3 py-2 text-sm cursor-pointer flex items-center justify-between transition-all hover:bg-muted/50 hover:border-primary/50",
             isOpen
-              ? "border-[#5865F2] ring-1 ring-[#5865F2] rounded-b-none border-b-0"
+              ? "border-primary ring-1 ring-primary rounded-b-none border-b-0"
               : ""
           )}
         >
@@ -303,27 +427,27 @@ function DiscordSelect({ label, value, onChange, options, placeholder, icon: Ico
               <Icon
                 className={cn(
                   "w-4 h-4 shrink-0 transition-colors",
-                  isOpen || selectedOption ? "text-gray-300" : "text-gray-500"
+                  isOpen || selectedOption ? "text-foreground" : "text-muted-foreground"
                 )}
               />
             )}
-            <span className={cn("truncate font-medium", !selectedOption && "text-gray-500")}>
+            <span className={cn("truncate font-medium", !selectedOption && "text-muted-foreground")}>
               {selectedOption ? selectedOption.label : placeholder}
             </span>
           </div>
           <ChevronDown
             className={cn(
-              "w-4 h-4 text-gray-500 transition-transform duration-200",
-              isOpen && "rotate-180 text-white"
+              "w-4 h-4 text-muted-foreground transition-transform duration-200",
+              isOpen && "rotate-180 text-foreground"
             )}
           />
         </div>
 
         {isOpen && (
-          <div className="absolute z-[9999] w-full bg-[#2b2d31] border border-[#5865F2] border-t-0 rounded-b-sm shadow-xl max-h-60 overflow-y-auto custom-scrollbar animate-in fade-in slide-in-from-top-1 duration-100">
+          <div className="absolute z-[9999] w-full bg-card border border-primary border-t-0 rounded-b-sm shadow-xl max-h-60 overflow-y-auto custom-scrollbar animate-in fade-in slide-in-from-top-1 duration-100">
             <div className="p-1 space-y-0.5">
               {options.length === 0 ? (
-                <div className="px-3 py-2 text-sm text-gray-500 text-center italic">
+                <div className="px-3 py-2 text-sm text-muted-foreground text-center italic">
                   Keine Optionen verfügbar
                 </div>
               ) : (
@@ -339,15 +463,15 @@ function DiscordSelect({ label, value, onChange, options, placeholder, icon: Ico
                       className={cn(
                         "px-3 py-2 text-sm rounded-[3px] cursor-pointer flex items-center gap-2 transition-colors group",
                         isSelected
-                          ? "bg-[#404249] text-white"
-                          : "text-gray-300 hover:bg-[#35373c] hover:text-white"
+                          ? "bg-primary text-primary-foreground"
+                          : "text-muted-foreground hover:bg-muted hover:text-foreground"
                       )}
                     >
                       {Icon && (
                         <Icon
                           className={cn(
                             "w-4 h-4 shrink-0",
-                            isSelected ? "text-white" : "text-gray-500 group-hover:text-gray-300"
+                            isSelected ? "text-primary-foreground" : "text-muted-foreground group-hover:text-foreground"
                           )}
                         />
                       )}
@@ -355,7 +479,7 @@ function DiscordSelect({ label, value, onChange, options, placeholder, icon: Ico
                         {opt.label}
                       </span>
                       {isSelected && (
-                        <div className="flex items-center justify-center w-5 h-5 rounded-full bg-[#5865F2] shrink-0">
+                        <div className="flex items-center justify-center w-5 h-5 rounded-full bg-background/20 shrink-0">
                           <Check className="w-3 h-3 text-white stroke-[3]" />
                         </div>
                       )}
@@ -441,7 +565,6 @@ function buildTicketBotCode(modal) {
 
       if (c.kind === "file_upload") return { ...base };
 
-      // Für User/Role/Channel Selects: "mx" statt "mxv"
       return { 
           ...base, 
           k: c.kind, 
@@ -549,11 +672,16 @@ export default function TicketsPage() {
   // --- UI STATE ---
   const [isPreviewMinimized, setIsPreviewMinimized] = useState(false);
   const [showMobilePreview, setShowMobilePreview] = useState(false);
-  
+  const [clientTime, setClientTime] = useState(""); 
+
   // DRAG STATE & HANDLERS
   const [previewY, setPreviewY] = useState(0); 
   const [isDragging, setIsDragging] = useState(false); 
   const dragStartRef = useRef(0);
+
+  useEffect(() => {
+    setClientTime(new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }));
+  }, []);
 
   const handleDragStart = (e) => {
     setIsDragging(true); 
@@ -562,24 +690,14 @@ export default function TicketsPage() {
   };
 
   const handleDragMove = useCallback((e) => {
-    // Safety check: Don't run on server
     if (typeof window === 'undefined') return;
-
     let newY = e.clientY - dragStartRef.current;
-    
-    // Dynamic Boundary Calculation
-    // Assuming start position is "50% + 120px"
     const windowHeight = window.innerHeight;
     const startPos = (windowHeight / 2) + 120;
-    
-    // Limits
-    const maxUp = 80 - startPos; // 80px from top
-    const maxDown = windowHeight - 50 - startPos; // 50px from bottom
-
-    // Clamp
+    const maxUp = 80 - startPos; 
+    const maxDown = windowHeight - 50 - startPos;
     if (newY < maxUp) newY = maxUp;
     if (newY > maxDown) newY = maxDown;
-
     setPreviewY(newY);
   }, []);
 
@@ -790,572 +908,363 @@ export default function TicketsPage() {
     }
   }
 
-  if (loading) {
-    return (
-      <div className="flex h-screen items-center justify-center text-gray-400 animate-pulse">
-        Lade Ticketsystem...
-      </div>
-    );
-  }
-  if (loadError) {
-    return (
-      <div className="p-8 text-red-400 bg-red-900/10 border border-red-500/20 rounded-lg m-4">
-        ❌ Fehler: {loadError}
-      </div>
-    );
-  }
-  if (!settings) {
-    return <div className="p-8 text-gray-400">Keine Einstellungen gefunden.</div>;
-  }
-
   const guildIconUrl = currentGuild?.icon
     ? `https://cdn.discordapp.com/icons/${currentGuild.id}/${currentGuild.icon}.png`
     : "https://cdn.discordapp.com/embed/avatars/0.png";
 
   return (
-    <div className="p-2 sm:p-6 xl:p-10 mx-auto w-full max-w-[1920px] space-y-8 font-sans">
+    <div className="p-2 sm:p-6 xl:p-10 mx-auto w-full max-w-[1920px] space-y-8 font-sans transition-colors duration-300">
       <style jsx global>{`
-        .discord-md strong { font-weight: 700; color: #fff; }
+        .discord-md strong { font-weight: 700; color: inherit; }
         .discord-md .inlinecode {
-          background: rgba(255,255,255,0.1);
+          background: rgba(var(--muted), 0.5);
           padding: 2px 4px;
           border-radius: 4px;
           font-family: monospace;
         }
       `}</style>
 
-      {/* HEADER */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b border-white/10 pb-6 px-2 sm:px-0">
-        <div>
-          <h1 className="text-2xl font-bold text-white tracking-tight flex items-center gap-3">
-            <Inbox className="w-8 h-8 text-[#5865F2]" />
-            Ticket System
-          </h1>
-          <p className="text-gray-400 text-sm mt-1">
-            Verwalte Support-Tickets, konfiguriere das Design und den Ablauf.
-          </p>
-        </div>
-        <div className="bg-[#111214] p-1 rounded-lg border border-white/10 shadow-sm flex gap-1 w-full md:w-auto overflow-x-auto no-scrollbar">
-          <button
-            onClick={() => setActiveTab("overview")}
-            className={cn(
-              "px-4 py-2 rounded-md text-sm font-medium transition-all flex items-center gap-2 whitespace-nowrap",
-              activeTab === "overview"
-                ? "bg-[#5865F2] text-white shadow-sm"
-                : "text-gray-400 hover:text-white hover:bg-white/5"
-            )}
-          >
-            <BarChart3 className="w-4 h-4" /> Übersicht
-          </button>
-          <button
-            onClick={() => setActiveTab("settings")}
-            className={cn(
-              "px-4 py-2 rounded-md text-sm font-medium transition-all flex items-center gap-2 whitespace-nowrap",
-              activeTab === "settings"
-                ? "bg-[#5865F2] text-white shadow-sm"
-                : "text-gray-400 hover:text-white hover:bg-white/5"
-            )}
-          >
-            <Settings2 className="w-4 h-4" /> Konfiguration
-          </button>
+      {/* --- HEADER --- */}
+      <div className="flex flex-col gap-4 border-b border-border pb-6 px-2 lg:px-0">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+            
+            {/* TITEL & BESCHREIBUNG - Mit Padding für Mobile (pl-14) */}
+            <div className="pl-8 lg:pl-0">
+                <h1 className="text-2xl font-bold text-foreground tracking-tight flex items-center gap-3">
+                    <Inbox className="w-8 h-8 text-primary" />
+                    Ticket System
+                </h1>
+                <p className="text-muted-foreground text-sm mt-1">
+                    Verwalte Support-Tickets, konfiguriere das Design und den Ablauf.
+                </p>
+            </div>
+
+            {/* BUTTONS - Jetzt Full Width mit gleichmäßig breiten Buttons */}
+<div className="bg-card p-1 rounded-lg border border-border shadow-sm flex gap-1 w-full md:w-auto overflow-x-auto no-scrollbar">
+    <button
+        onClick={() => setActiveTab("overview")}
+        disabled={loading}
+        className={cn(
+            "flex-1 md:flex-none px-4 py-2 rounded-md text-sm font-medium transition-all flex items-center justify-center gap-2 whitespace-nowrap",
+            activeTab === "overview"
+                ? "bg-primary text-primary-foreground shadow-sm"
+                : "text-muted-foreground hover:text-foreground hover:bg-muted/50",
+            loading && "opacity-50 cursor-not-allowed"
+        )}
+    >
+        <BarChart3 className="w-4 h-4" /> Übersicht
+    </button>
+    <button
+        onClick={() => setActiveTab("settings")}
+        disabled={loading}
+        className={cn(
+            "flex-1 md:flex-none px-4 py-2 rounded-md text-sm font-medium transition-all flex items-center gap-2 whitespace-nowrap",
+            activeTab === "settings"
+                ? "bg-primary text-primary-foreground shadow-sm"
+                : "text-muted-foreground hover:text-foreground hover:bg-muted/50",
+            loading && "opacity-50 cursor-not-allowed"
+        )}
+    >
+        <Settings2 className="w-4 h-4" /> Konfiguration
+    </button>
+</div>
         </div>
       </div>
 
-      {/* OVERVIEW TAB */}
-      {activeTab === "overview" && (
+      {/* --- CONTENT --- */}
+      {/* KEIN "if (loading) return" MEHR!
+         Wir zeigen die Stats immer an und nutzen ein lokales Skeleton für den Content.
+      */}
+      
+      {loadError ? (
+         <div className="p-8 text-red-500 bg-red-500/10 border border-red-500/20 rounded-lg m-4">
+            ❌ Fehler: {loadError}
+         </div>
+      ) : (
+        <>
+          {activeTab === "overview" && (
         <div className="space-y-6 animate-in fade-in slide-in-from-top-2 duration-300 px-2 sm:px-0">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-             <StatsCard title="Tickets Gesamt" value={stats.total} icon={Inbox} colorClass="text-blue-400" />
-             <StatsCard title="Aktuell Offen" value={stats.open} icon={MessageSquare} colorClass="text-green-400" />
-             <StatsCard title="Neu (7 Tage)" value={stats.thisWeek} icon={CalendarDays} colorClass="text-orange-400" />
-             <StatsCard title="Geschlossen" value={stats.closed} icon={CheckCircle2} colorClass="text-purple-400" />
+          
+          {/* STATS ROW */}
+          {/* FIX: grid-cols-2 für Handy, gap-2 für mehr Platz */}
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-4">
+            <StatsCard title="Tickets" value={stats.total} icon={Inbox} colorClass="text-blue-500" loading={loading} />
+            <StatsCard title="Offen" value={stats.open} icon={MessageSquare} colorClass="text-green-500" loading={loading} />
+            <StatsCard title="Neu (7d)" value={stats.thisWeek} icon={CalendarDays} colorClass="text-orange-500" loading={loading} />
+            <StatsCard title="Geschlossen" value={stats.closed} icon={CheckCircle2} colorClass="text-purple-500" loading={loading} />
           </div>
 
-          <div className="grid grid-cols-1 xl:grid-cols-[380px_1fr] gap-6 h-auto xl:h-[calc(100vh-320px)] min-h-[600px]">
-            <Card className="bg-[#111214] border-white/10 flex flex-col overflow-hidden shadow-sm rounded-lg h-[400px] xl:h-auto">
-              <CardHeader className="bg-[#16171a] border-b border-white/10 py-3.5 px-4">
-                <CardTitle className="text-white text-sm font-bold flex justify-between items-center">
-                  <span>Offene Tickets</span>
-                  <span className="bg-[#5865F2] text-white text-[10px] px-2 py-0.5 rounded-full">
-                    {openTickets.length}
-                  </span>
-                </CardTitle>
-              </CardHeader>
+          {loading ? (
+             <TicketContentSkeleton />
+          ) : (
+            /* HIER: Höhen angepasst für mehr Platz unten */
+            <div className="grid grid-cols-1 xl:grid-cols-[380px_1fr] gap-6 h-auto xl:h-[calc(100vh-380px)] min-h-[400px]">
+              
+              {/* LISTE (Kompakter: h-350px mobil) */}
+              <Card className="bg-card border-border flex flex-col overflow-hidden shadow-sm rounded-lg h-[350px] xl:h-auto">
+                <CardHeader className="bg-muted/30 border-b border-border py-3.5 px-4">
+                  <CardTitle className="text-foreground text-sm font-bold flex justify-between items-center">
+                    <span>Offene Tickets</span>
+                    <span className="bg-primary text-primary-foreground text-[10px] px-2 py-0.5 rounded-full">
+                      {openTickets.length}
+                    </span>
+                  </CardTitle>
+                </CardHeader>
 
-              <div className="flex-1 overflow-y-auto p-2 space-y-1">
-                {openTickets.length === 0 && (
-                  <div className="flex flex-col items-center justify-center h-full text-gray-500 gap-2">
-                    <CheckCircle2 className="w-8 h-8 opacity-20" />
-                    <p className="text-sm">Alles erledigt!</p>
-                  </div>
-                )}
-
-                {openTickets.map((t) => (
-                  <button
-                    key={t._id}
-                    onClick={() => onSelectTicket(t)}
-                    className={cn(
-                      "w-full text-left p-3 rounded-md border transition-all group",
-                      selectedTicketId === t._id
-                        ? "border-[#5865F2] bg-[#5865F2]/10"
-                        : "border-transparent bg-transparent hover:bg-white/5 hover:border-white/5"
-                    )}
-                  >
-                    <div className="text-white font-medium truncate text-sm group-hover:text-[#5865F2] transition-colors">
-                      {t.issue || "No Subject"}
+                <div className="flex-1 overflow-y-auto p-2 space-y-1">
+                  {openTickets.length === 0 && (
+                    <div className="flex flex-col items-center justify-center h-full text-muted-foreground gap-2">
+                      <CheckCircle2 className="w-8 h-8 opacity-20" />
+                      <p className="text-sm">Alles erledigt!</p>
                     </div>
-                    <div className="text-xs text-gray-400 mt-1 flex justify-between">
-                      <span>{t.userTag}</span>
-                      <span className="text-gray-600 font-mono text-[10px]">{new Date(t.createdAt).toLocaleDateString()}</span>
-                    </div>
-                  </button>
-                ))}
-              </div>
-            </Card>
+                  )}
 
-            <Card className="bg-[#111214] border-white/10 flex flex-col shadow-sm rounded-lg h-[600px] xl:h-auto">
-              {!selectedTicket ? (
-                <div className="m-auto text-gray-500 flex flex-col items-center gap-3">
-                  <div className="p-4 bg-white/5 rounded-full">
-                    <MessageSquare className="w-8 h-8 opacity-40" />
-                  </div>
-                  <p className="text-sm">Wähle ein Ticket aus, um den Verlauf zu sehen.</p>
+                  {openTickets.map((t) => (
+                    <button
+                      key={t._id}
+                      onClick={() => onSelectTicket(t)}
+                      className={cn(
+                        "w-full text-left p-3 rounded-md border transition-all group",
+                        selectedTicketId === t._id
+                          ? "border-primary bg-primary/10"
+                          : "border-transparent bg-transparent hover:bg-muted/50 hover:border-border"
+                      )}
+                    >
+                      <div className="text-foreground font-medium truncate text-sm group-hover:text-primary transition-colors">
+                        {t.issue || "No Subject"}
+                      </div>
+                      <div className="text-xs text-muted-foreground mt-1 flex justify-between">
+                        <span>{t.userTag}</span>
+                        <span className="text-muted-foreground/70 font-mono text-[10px]">{new Date(t.createdAt).toLocaleDateString()}</span>
+                      </div>
+                    </button>
+                  ))}
                 </div>
-              ) : (
-                <>
-                  {/* HEADER */}
-                  <div className="bg-[#16171a] border-b border-white/10 p-4 flex justify-between items-center shrink-0">
-                    <div className="font-bold text-white flex items-center gap-2">
-                      <Hash className="w-4 h-4 text-gray-500" /> {selectedTicket.issue}
-                    </div>
-                    <div className="flex gap-3 items-center">
-                        <div className="text-[10px] font-mono text-gray-400">
-                            {selectedTicket.userTag}
-                        </div>
-                        <div className="text-[10px] font-mono text-gray-600 bg-black/30 px-2 py-1 rounded">
-                            ID: {selectedTicket.channelId}
-                        </div>
-                    </div>
-                  </div>
+              </Card>
 
-                  {/* MESSAGE LIST - Nimmt jetzt den ganzen Platz ein (flex-1) */}
-                  <div className="flex-1 overflow-hidden relative bg-[#1e1f22]/50">
-                    <div ref={chatScrollRef} className="absolute inset-0 overflow-y-auto p-4 space-y-4 custom-scrollbar">
-                      {messages.length === 0 && !chatLoading && (
-                          <div className="text-center text-gray-500 text-xs mt-10">Keine Nachrichten vorhanden.</div>
-                      )}
-                      
-                      {messages.map((m, i) => (
-                        <div key={i} className="group flex gap-3 hover:bg-white/[0.02] p-2 rounded-lg -mx-2 transition-colors">
-                          <div className="w-9 h-9 rounded-full bg-[#5865F2] flex items-center justify-center text-white font-bold text-xs shrink-0 shadow-sm select-none">
-                            {m.authorTag?.charAt(0).toUpperCase()}
-                          </div>
-                          <div className="min-w-0 flex-1">
-                            <div className="flex items-baseline gap-2">
-                              <span className="font-bold text-gray-100 text-sm truncate">{m.authorTag}</span>
-                              <span className="text-[10px] text-gray-500 font-mono">{new Date(m.timestamp).toLocaleString()}</span>
-                            </div>
-                            <div className="text-[14px] text-gray-300 mt-1 whitespace-pre-wrap leading-relaxed break-words">
-                              <DiscordMarkdown text={m.content} />
-                            </div>
-                          </div>
-                        </div>
-                      ))}
-                      {chatLoading && (
-                          <div className="text-center text-gray-500 text-xs animate-pulse py-4">Lade Verlauf...</div>
-                      )}
+              {/* CHAT (Kompakter: h-450px mobil) */}
+              <Card className="bg-card border-border flex flex-col shadow-sm rounded-lg h-[450px] xl:h-auto">
+                {!selectedTicket ? (
+                  <div className="m-auto text-muted-foreground flex flex-col items-center gap-3">
+                    <div className="p-4 bg-muted rounded-full">
+                      <MessageSquare className="w-8 h-8 opacity-40" />
                     </div>
+                    <p className="text-sm">Wähle ein Ticket aus, um den Verlauf zu sehen.</p>
                   </div>
-                  
-                  {/* FOOTER WURDE ENTFERNT */}
-                </>
-              )}
-            </Card>
-          </div>
+                ) : (
+                  <>
+                    <div className="bg-muted/30 border-b border-border p-4 flex justify-between items-center shrink-0">
+                      <div className="font-bold text-foreground flex items-center gap-2">
+                        <Hash className="w-4 h-4 text-muted-foreground" /> {selectedTicket.issue}
+                      </div>
+                      <div className="flex gap-3 items-center">
+                          <div className="text-[10px] font-mono text-muted-foreground">
+                              {selectedTicket.userTag}
+                          </div>
+                          <div className="text-[10px] font-mono text-muted-foreground bg-muted px-2 py-1 rounded">
+                              ID: {selectedTicket.channelId}
+                          </div>
+                      </div>
+                    </div>
+
+                    <div className="flex-1 overflow-hidden relative bg-muted/20">
+                      <div ref={chatScrollRef} className="absolute inset-0 overflow-y-auto p-4 space-y-4 custom-scrollbar">
+                        {messages.length === 0 && !chatLoading && (
+                            <div className="text-center text-muted-foreground text-xs mt-10">Keine Nachrichten vorhanden.</div>
+                        )}
+                        
+                        {messages.map((m, i) => (
+                          <div key={i} className="group flex gap-3 hover:bg-muted/30 p-2 rounded-lg -mx-2 transition-colors">
+                            <div className="w-9 h-9 rounded-full bg-primary flex items-center justify-center text-primary-foreground font-bold text-xs shrink-0 shadow-sm select-none">
+                              {m.authorTag?.charAt(0).toUpperCase()}
+                            </div>
+                            <div className="min-w-0 flex-1">
+                              <div className="flex items-baseline gap-2">
+                                <span className="font-bold text-foreground text-sm truncate">{m.authorTag}</span>
+                                <span className="text-[10px] text-muted-foreground font-mono">{new Date(m.timestamp).toLocaleString()}</span>
+                              </div>
+                              <div className="text-[14px] text-foreground/90 mt-1 whitespace-pre-wrap leading-relaxed break-words">
+                                <DiscordMarkdown text={m.content} />
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                        {chatLoading && (
+                            <div className="text-center text-muted-foreground text-xs animate-pulse py-4">Lade Verlauf...</div>
+                        )}
+                      </div>
+                    </div>
+                  </>
+                )}
+              </Card>
+            </div>
+          )}
         </div>
       )}
 
-      {/* CONFIGURATION & EDITOR TAB */}
-      {activeTab === "settings" && (
-        <div className="relative animate-in fade-in slide-in-from-top-2 duration-300">
-          <div className="flex flex-col xl:flex-row w-full items-start gap-8 relative">
-            
-            {/* LINKER BEREICH: MAIN CONTENT */}
-            <div className="w-full xl:flex-1 min-w-0 transition-all duration-500 ease-in-out">
+          {activeTab === "settings" && settings && !loading && (
+            <div className="relative animate-in fade-in slide-in-from-top-2 duration-300">
+              <div className="flex flex-col xl:flex-row w-full items-start gap-8 relative">
                 
-                {/* --- FIX: overflow-hidden removed here --- */}
-                <Card className={cn(
-                  "bg-[#111214] border-white/10 shadow-sm rounded-lg flex flex-col z-10 relative transition-all duration-500 ease-in-out",
-                  editorTab === "config" ? "w-full xl:w-[85%]" : "w-full"
-                )}>
-                  
-                  {/* Card Header */}
-                  <div className="bg-[#16171a] border-b border-white/10 px-6 pt-4 pb-0 flex flex-col gap-4 rounded-t-lg">
-                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-                      <div>
-                        <h2 className="text-white text-lg font-bold flex items-center gap-2">
-                          Konfiguration & Design
-                        </h2>
-                      </div>
-                      <div className="flex gap-2 w-full sm:w-auto">
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          onClick={handleReset}
-                          className="text-gray-400 hover:text-white hover:bg-white/5 h-8 text-xs font-medium flex-1 sm:flex-none"
-                        >
-                          <History className="w-3.5 h-3.5 mr-1.5" /> Reset
-                        </Button>
-                        <Button
-                          size="sm"
-                          onClick={handleSave}
-                          disabled={saving}
-                          className="bg-[#5865F2] hover:bg-[#4752C4] text-white h-8 text-xs font-bold px-4 rounded-md shadow-sm flex-1 sm:flex-none"
-                        >
-                          {saving ? (
-                            <RefreshCw className="w-3.5 h-3.5 animate-spin mr-1.5" />
-                          ) : (
-                            <Save className="w-3.5 h-3.5 mr-1.5" />
-                          )}
-                          Speichern
-                        </Button>
-                      </div>
-                    </div>
-
-                    {/* Tabs Row */}
-                    <div className="flex gap-6 overflow-x-auto mt-2 no-scrollbar pb-1">
-                      {[
-                        { id: "config", label: "Konfiguration", icon: Settings2 },
-                        { id: "panel", label: "Panel Design", icon: LayoutTemplate },
-                        { id: "modal", label: "Formular", icon: MousePointerClick },
-                        { id: "response", label: "Antwort", icon: MessageSquare }
-                      ].map((tab) => (
-                        <button
-                          key={tab.id}
-                          onClick={() => setEditorTab(tab.id)}
-                          className={cn(
-                            "pb-3 text-sm font-medium border-b-[2px] transition-all flex items-center gap-2 whitespace-nowrap shrink-0",
-                            editorTab === tab.id
-                              ? "border-[#5865F2] text-white"
-                              : "border-transparent text-gray-500 hover:text-gray-300 hover:border-white/10"
-                          )}
-                        >
-                          <tab.icon className={cn("w-4 h-4", editorTab === tab.id ? "text-[#5865F2]" : "text-gray-500")} />
-                          {tab.label}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-
-                  <CardContent className="p-0 bg-[#111214] rounded-b-lg">
-                    {formMsg && (
-                      <div className="mx-6 mt-4 px-4 py-3 bg-green-500/10 border border-green-500/20 text-green-400 rounded-md text-sm flex items-center gap-2">
-                        <CheckCircle2 className="w-4 h-4" /> {formMsg}
-                      </div>
-                    )}
-
-                    <div className="p-4 sm:p-6 min-h-[500px]">
+                {/* LINKER BEREICH: EDITOR */}
+                <div className="w-full xl:flex-1 min-w-0 transition-all duration-500 ease-in-out">
+                    <Card className={cn(
+                      "bg-card border-border shadow-sm rounded-lg flex flex-col z-10 relative transition-all duration-500 ease-in-out",
+                      editorTab === "config" ? "w-full xl:w-[85%]" : "w-full"
+                    )}>
                       
-                      {/* CONFIG TABS */}
-                      {editorTab === "config" && (
-                        <div className="space-y-4 animate-in fade-in slide-in-from-left-2 duration-300">
-                          <div className="bg-blue-500/5 border border-blue-500/10 rounded-md p-4 mb-6 flex gap-3">
-                            <AlertCircle className="w-5 h-5 text-blue-400 shrink-0" />
-                            <div className="text-sm text-gray-300 leading-relaxed">
-                                Definiere hier die grundlegenden Kanäle und Rollen für das Ticket-System.
-                            </div>
+                      <div className="bg-muted/30 border-b border-border px-6 pt-4 pb-0 flex flex-col gap-4 rounded-t-lg">
+                        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                          <div>
+                            <h2 className="text-foreground text-lg font-bold flex items-center gap-2">
+                              Konfiguration & Design
+                            </h2>
                           </div>
-
-                          <CollapsibleSection title="Allgemeine Einstellungen" icon={Settings2}>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                                <ChannelSelect
-                                  label="Ticket Kategorie (Offen)"
-                                  value={settings.ticketCategoryId}
-                                  onChange={(v) => setSettings({ ...settings, ticketCategoryId: v })}
-                                  channels={channels}
-                                  typeFilter={4}
-                                  placeholder="Kategorie wählen..."
-                                />
-                                <ChannelSelect
-                                  label="Log Channel (Transcripts)"
-                                  value={settings.logChannelId}
-                                  onChange={(v) => setSettings({ ...settings, logChannelId: v })}
-                                  channels={channels}
-                                  typeFilter={0}
-                                  placeholder="#logs wählen..."
-                                />
-                                <ChannelSelect
-                                  label="Panel Channel (Ticket Erstellung)"
-                                  value={settings.panelChannelId}
-                                  onChange={(v) => setSettings({ ...settings, panelChannelId: v })}
-                                  channels={channels}
-                                  typeFilter={0}
-                                  placeholder="#tickets wählen..."
-                                />
-                                <RoleSelect
-                                  label="Support Team Rolle"
-                                  value={settings.supportRoleId}
-                                  onChange={(v) => setSettings({ ...settings, supportRoleId: v })}
-                                  roles={roles}
-                                  placeholder="@Support wählen..."
-                                />
-                            </div>
-                          </CollapsibleSection>
-                        </div>
-                      )}
-
-                      {editorTab === "panel" && (
-                        <div className="space-y-6 animate-in fade-in slide-in-from-left-2 duration-300">
-                          <CollapsibleSection title="Button Konfiguration" icon={Palette}>
-                              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                                <div className="space-y-2">
-                                  <Label className="text-[11px] text-gray-400 uppercase font-bold">
-                                    Button Text
-                                  </Label>
-                                  <Input
-                                    value={settings.panelButtonText || ""}
-                                    onChange={(e) =>
-                                      setSettings({ ...settings, panelButtonText: e.target.value })
-                                    }
-                                    placeholder="Standard"
-                                    className="bg-[#111214] border-white/10 text-white focus-visible:ring-[#5865F2]"
-                                  />
-                                </div>
-                                <div className="space-y-2">
-                                  <DiscordSelect
-                                    label="Button Farbe"
-                                    value={settings.panelButtonStyle || "Primary"}
-                                    onChange={(v) =>
-                                      setSettings({ ...settings, panelButtonStyle: v })
-                                    }
-                                    options={[
-                                      { label: "Primary (Blurple)", value: "Primary" },
-                                      { label: "Secondary (Grey)", value: "Secondary" },
-                                      { label: "Success (Green)", value: "Success" },
-                                      { label: "Danger (Red)", value: "Danger" },
-                                    ]}
-                                    placeholder="Style wählen..."
-                                    icon={Palette}
-                                  />
-                                </div>
-                              </div>
-                          </CollapsibleSection>
-                          <EmbedBuilder
-                              data={settings.panelEmbed}
-                              onChange={(e) => setSettings({ ...settings, panelEmbed: e })}
-                              hiddenSections={["author", "fields"]}
-                            />
-                        </div>
-                      )}
-
-                      {editorTab === "modal" && (
-                        <div className="animate-in fade-in slide-in-from-left-2 duration-300">
-                          <ModalBuilder data={modal} onChange={setModal} />
-                        </div>
-                      )}
-
-                      {editorTab === "response" && (
-                        <div className="space-y-6 animate-in fade-in slide-in-from-left-2 duration-300">
-                          <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center gap-4 border-b border-white/5 pb-6">
-                              <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 w-full sm:w-auto">
-                                  <span className="text-xs font-bold text-gray-500 uppercase tracking-wider shrink-0">Nachrichtentyp</span>
-                                  <div className="flex bg-[#16171a] p-1 rounded-md border border-white/10 w-full sm:w-auto">
-                                      <button 
-                                          onClick={() => setResponse(r => ({...r, type: 'text'}))}
-                                          className={cn(
-                                              "flex-1 sm:flex-none px-4 py-1.5 rounded-sm text-xs font-bold transition-all flex items-center justify-center gap-2",
-                                              response.type === 'text' ? "bg-[#5865F2] text-white shadow-sm" : "text-gray-400 hover:text-white hover:bg-white/5"
-                                          )}
-                                      >
-                                          <Type className="w-3 h-3" /> Text
-                                      </button>
-                                      <button 
-                                          onClick={() => setResponse(r => ({...r, type: 'embed'}))}
-                                          className={cn(
-                                              "flex-1 sm:flex-none px-4 py-1.5 rounded-sm text-xs font-bold transition-all flex items-center justify-center gap-2",
-                                              response.type === 'embed' ? "bg-[#5865F2] text-white shadow-sm" : "text-gray-400 hover:text-white hover:bg-white/5"
-                                          )}
-                                      >
-                                          <LayoutTemplate className="w-3 h-3" /> Embed
-                                      </button>
-                                  </div>
-                              </div>
-                              <div className="w-full xl:w-auto">
-                                  <VariableDropdown modal={modal} />
-                              </div>
-                          </div>
-
-                          <div className="animate-in fade-in slide-in-from-bottom-2 duration-300">
-                              {response.type === "text" && (
-                                <div className="space-y-2">
-                                  <textarea
-                                    value={response.text || ""}
-                                    onChange={(e) => setResponse((r) => ({ ...r, text: e.target.value }))}
-                                    className="w-full h-64 bg-[#111214] border border-white/10 rounded-md p-4 text-white outline-none focus:border-[#5865F2] transition-colors resize-none leading-relaxed text-sm font-mono custom-scrollbar"
-                                    placeholder="Schreibe hier deine Nachricht..."
-                                  />
-                                </div>
+                          <div className="flex gap-2 w-full sm:w-auto">
+                            <Button size="sm" variant="ghost" onClick={handleReset} className="text-muted-foreground hover:text-foreground hover:bg-muted/50 h-8 text-xs font-medium flex-1 sm:flex-none">
+                              <History className="w-3.5 h-3.5 mr-1.5" /> Reset
+                            </Button>
+                            <Button size="sm" onClick={handleSave} disabled={saving} className="bg-primary hover:bg-primary/90 text-primary-foreground h-8 text-xs font-bold px-4 rounded-md shadow-sm flex-1 sm:flex-none">
+                              {saving ? (
+                                <RefreshCw className="w-3.5 h-3.5 animate-spin mr-1.5" />
+                              ) : (
+                                <Save className="w-3.5 h-3.5 mr-1.5" />
                               )}
-
-                              {response.type === "embed" && (
-                                <div className="space-y-6">
-                                  <div>
-                                    <Label className="text-[11px] text-gray-400 uppercase font-bold mb-2 block">
-                                      Text über dem Embed (Optional)
-                                    </Label>
-                                    <Input
-                                      value={response.content || ""}
-                                      onChange={(e) => setResponse((r) => ({ ...r, content: e.target.value }))}
-                                      placeholder="Z.B.: Hallo {user}, danke für dein Ticket!"
-                                      className="bg-[#111214] border-white/10 text-white focus-visible:ring-[#5865F2]"
-                                    />
-                                  </div>
-
-                                  <div className="pt-4 border-t border-white/5">
-                                    <EmbedBuilder
-                                      data={response.embed}
-                                      onChange={(e) => setResponse({ ...response, embed: e })}
-                                    />
-                                  </div>
-                                </div>
-                              )}
+                              Speichern
+                            </Button>
                           </div>
-
                         </div>
-                      )}
-                    </div>
-                  </CardContent>
-                </Card>
-            </div>
+                        <div className="flex gap-6 overflow-x-auto mt-2 no-scrollbar pb-1">
+                          {[{ id: "config", label: "Konfiguration", icon: Settings2 }, { id: "panel", label: "Panel Design", icon: LayoutTemplate }, { id: "modal", label: "Formular", icon: MousePointerClick }, { id: "response", label: "Antwort", icon: MessageSquare }].map((tab) => (
+                            <button key={tab.id} onClick={() => setEditorTab(tab.id)} className={cn("pb-3 text-sm font-medium border-b-[2px] transition-all flex items-center gap-2 whitespace-nowrap shrink-0", editorTab === tab.id ? "border-primary text-foreground" : "border-transparent text-muted-foreground hover:text-foreground hover:border-border")}>
+                              <tab.icon className={cn("w-4 h-4", editorTab === tab.id ? "text-primary" : "text-muted-foreground")} /> {tab.label}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
 
-            {/* SPACER */}
-            <div className={cn(
-               "shrink-0 transition-all duration-500 ease-in-out hidden xl:block",
-               editorTab === "config" || isPreviewMinimized ? "w-0" : "w-[600px]"
-            )} />
+                      <CardContent className="p-0 bg-card rounded-b-lg">
+                        {formMsg && <div className="mx-6 mt-4 px-4 py-3 bg-green-500/10 border border-green-500/20 text-green-500 rounded-md text-sm flex items-center gap-2"><CheckCircle2 className="w-4 h-4" /> {formMsg}</div>}
+                        <div className="p-4 sm:p-6 min-h-[500px]">
+                          
+                          {editorTab === "config" && (
+                            <div className="space-y-4 animate-in fade-in slide-in-from-left-2 duration-300">
+                              <CollapsibleSection title="Allgemeine Einstellungen" icon={Settings2}>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                                    <ChannelSelect label="Ticket Kategorie (Offen)" value={settings.ticketCategoryId} onChange={(v) => setSettings({ ...settings, ticketCategoryId: v })} channels={channels} typeFilter={4} placeholder="Kategorie wählen..." />
+                                    <ChannelSelect label="Log Channel (Transcripts)" value={settings.logChannelId} onChange={(v) => setSettings({ ...settings, logChannelId: v })} channels={channels} typeFilter={0} placeholder="#logs wählen..." />
+                                    <ChannelSelect label="Panel Channel (Ticket Erstellung)" value={settings.panelChannelId} onChange={(v) => setSettings({ ...settings, panelChannelId: v })} channels={channels} typeFilter={0} placeholder="#tickets wählen..." />
+                                    <RoleSelect label="Support Team Rolle" value={settings.supportRoleId} onChange={(v) => setSettings({ ...settings, supportRoleId: v })} roles={roles} placeholder="@Support wählen..." />
+                                </div>
+                              </CollapsibleSection>
+                            </div>
+                          )}
 
-            {/* PREVIEW MAXIMIZED */}
-            <div 
-                style={{ top: isPreviewMinimized ? '-9999px' : `calc(50% + ${120 + previewY}px)` }}
-                className={cn(
-                    "hidden xl:block fixed -translate-y-1/2 right-10 w-[600px] z-50 origin-top-right scale-[0.85]",
-                    isDragging ? "transition-none" : "transition-all duration-300 ease-in-out",
-                    (editorTab === "config" && !isPreviewMinimized) 
-                        ? "translate-x-[120%] opacity-0 pointer-events-none" 
-                        : "translate-x-0 opacity-100"
-                )}
-            >
-              <div className="bg-[#111214] border border-white/10 rounded-lg shadow-2xl ring-1 ring-white/5 overflow-hidden flex flex-col max-h-[calc(100vh-6rem)]">
-                <div 
-                    onMouseDown={handleDragStart}
-                    className="bg-[#1e1f22] border-b border-white/5 p-3 flex items-center justify-between cursor-grab active:cursor-grabbing select-none"
-                >
-                  <div className="flex items-center gap-2">
-                     <GripHorizontal className="w-4 h-4 text-gray-600" />
-                     <span className="text-gray-400 font-bold text-xs uppercase tracking-wider">Live Preview</span>
-                  </div>
-                  <div className="flex gap-2">
-                      <span className="text-[10px] bg-white/5 px-2 py-0.5 rounded text-gray-500">
-                          {editorTab === "config" ? "Allgemein" : editorTab === "modal" ? "Formular" : editorTab === "response" ? "Bot Antwort" : "Panel"}
-                      </span>
-                      <button onClick={() => setIsPreviewMinimized(true)} className="text-gray-500 hover:text-white transition-colors">
-                         <Minimize2 className="w-4 h-4" />
-                      </button>
-                  </div>
+                          {editorTab === "panel" && (
+                            <div className="space-y-6 animate-in fade-in slide-in-from-left-2 duration-300">
+                              <CollapsibleSection title="Button Konfiguration" icon={Palette}>
+                                  <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                                    <div className="space-y-2"><Label className="text-[11px] text-muted-foreground uppercase font-bold">Button Text</Label><Input value={settings.panelButtonText || ""} onChange={(e) => setSettings({ ...settings, panelButtonText: e.target.value })} placeholder="Standard" className="bg-muted/30 border-input text-foreground focus-visible:ring-primary" /></div>
+                                    <div className="space-y-2"><DiscordSelect label="Button Farbe" value={settings.panelButtonStyle || "Primary"} onChange={(v) => setSettings({ ...settings, panelButtonStyle: v })} options={[{ label: "Primary (Blurple)", value: "Primary" }, { label: "Secondary (Grey)", value: "Secondary" }, { label: "Success (Green)", value: "Success" }, { label: "Danger (Red)", value: "Danger" }]} placeholder="Style wählen..." icon={Palette} /></div>
+                                  </div>
+                              </CollapsibleSection>
+                              <EmbedBuilder data={settings.panelEmbed} onChange={(e) => setSettings({ ...settings, panelEmbed: e })} hiddenSections={["author", "fields"]} />
+                            </div>
+                          )}
+
+                          {editorTab === "modal" && (
+                            <div className="animate-in fade-in slide-in-from-left-2 duration-300">
+                              <ModalBuilder data={modal} onChange={setModal} />
+                            </div>
+                          )}
+
+                          {editorTab === "response" && (
+                            <div className="space-y-6 animate-in fade-in slide-in-from-left-2 duration-300">
+                              <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center gap-4 border-b border-border pb-6">
+                                  <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 w-full sm:w-auto">
+                                      <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider shrink-0">Nachrichtentyp</span>
+                                      <div className="flex bg-muted/30 p-1 rounded-md border border-border w-full sm:w-auto">
+                                          <button onClick={() => setResponse(r => ({...r, type: 'text'}))} className={cn("flex-1 sm:flex-none px-4 py-1.5 rounded-sm text-xs font-bold transition-all flex items-center justify-center gap-2", response.type === 'text' ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground hover:text-foreground hover:bg-muted/50")}><Type className="w-3 h-3" /> Text</button>
+                                          <button onClick={() => setResponse(r => ({...r, type: 'embed'}))} className={cn("flex-1 sm:flex-none px-4 py-1.5 rounded-sm text-xs font-bold transition-all flex items-center justify-center gap-2", response.type === 'embed' ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground hover:text-foreground hover:bg-muted/50")}><LayoutTemplate className="w-3 h-3" /> Embed</button>
+                                      </div>
+                                  </div>
+                                  <div className="w-full xl:w-auto"><VariableDropdown modal={modal} /></div>
+                              </div>
+                              <div className="animate-in fade-in slide-in-from-bottom-2 duration-300">
+                                  {response.type === "text" && (<div className="space-y-2"><textarea value={response.text || ""} onChange={(e) => setResponse((r) => ({ ...r, text: e.target.value }))} className="w-full h-64 bg-muted/30 border border-input rounded-md p-4 text-foreground outline-none focus:border-primary transition-colors resize-none leading-relaxed text-sm font-mono custom-scrollbar" placeholder="Schreibe hier deine Nachricht..." /></div>)}
+                                  {response.type === "embed" && (<div className="space-y-6"><div><Label className="text-[11px] text-muted-foreground uppercase font-bold mb-2 block">Text über dem Embed (Optional)</Label><Input value={response.content || ""} onChange={(e) => setResponse((r) => ({ ...r, content: e.target.value }))} placeholder="Z.B.: Hallo {user}, danke für dein Ticket!" className="bg-muted/30 border-input text-foreground focus-visible:ring-primary" /></div><div className="pt-4 border-t border-border"><EmbedBuilder data={response.embed} onChange={(e) => setResponse({ ...response, embed: e })} /></div></div>)}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      </CardContent>
+                    </Card>
                 </div>
 
-                <div className="p-5 overflow-y-auto custom-scrollbar">
-                    {editorTab === "modal" && <ModalPreview modal={modal} guildIconUrl={guildIconUrl} />}
-                    {editorTab === "config" && <div className="text-center py-20 text-gray-500 italic text-sm">Einstellungen...</div>}
-                    {editorTab === "response" && (
-                    <div className="bg-[#313338] rounded-md p-4 transition-all duration-300">
-                        {response.type === "text" ? (
-                        <div className="flex gap-4 group items-start">
-                            <div className="shrink-0 cursor-pointer mt-0.5">
-                            <img src={guildIconUrl} alt="Bot" className="w-10 h-10 rounded-full hover:opacity-80 transition shadow-sm bg-[#1e1f22]" />
+                {/* SPACER */}
+                <div className={cn("shrink-0 transition-all duration-500 ease-in-out hidden xl:block", editorTab === "config" || isPreviewMinimized ? "w-0" : "w-[600px]")} />
+
+                {/* PREVIEW CONTAINER */}
+                <div style={{ top: isPreviewMinimized ? '-9999px' : `calc(50% + ${120 + previewY}px)` }} className={cn("hidden xl:block fixed -translate-y-1/2 right-10 w-[600px] z-50 origin-top-right scale-[0.85]", isDragging ? "transition-none" : "transition-all duration-300 ease-in-out", editorTab === "config" && !isPreviewMinimized ? "translate-x-[120%] opacity-0 pointer-events-none" : "translate-x-0 opacity-100")}>
+                  <div className="bg-card border border-border rounded-lg shadow-2xl ring-1 ring-black/5 overflow-hidden flex flex-col max-h-[calc(100vh-6rem)]">
+                    <div onMouseDown={handleDragStart} className="bg-muted/50 border-b border-border p-3 flex items-center justify-between cursor-grab active:cursor-grabbing select-none">
+                      <div className="flex items-center gap-2"><GripHorizontal className="w-4 h-4 text-muted-foreground" /><span className="text-muted-foreground font-bold text-xs uppercase tracking-wider">Live Preview</span></div>
+                      <div className="flex gap-2">
+                          <span className="text-[10px] bg-muted px-2 py-0.5 rounded text-muted-foreground">{editorTab === "config" ? "Allgemein" : editorTab === "modal" ? "Formular" : editorTab === "response" ? "Bot Antwort" : "Panel"}</span>
+                          <button onClick={() => setIsPreviewMinimized(true)} className="text-muted-foreground hover:text-foreground transition-colors"><Minimize2 className="w-4 h-4" /></button>
+                      </div>
+                    </div>
+                    <div className="p-5 overflow-y-auto custom-scrollbar bg-[#313338]">
+                        {editorTab === "modal" && <ModalPreview modal={modal} guildIconUrl={guildIconUrl} />}
+                        {editorTab === "config" && <div className="text-center py-20 text-gray-500 italic text-sm">Einstellungen...</div>}
+                        {editorTab === "response" && (
+                        <div className="bg-[#2b2d31] rounded-md p-4 transition-all duration-300 border border-black/10">
+                            {response.type === "text" ? (
+                            <div className="flex gap-4 group items-start">
+                                <img src={guildIconUrl} alt="Bot" className="w-10 h-10 rounded-full hover:opacity-80 transition shadow-sm bg-[#1e1f22]" />
+                                <div className="min-w-0">
+                                <div className="flex items-center gap-2 mb-1"><span className="text-white font-medium hover:underline cursor-pointer">Ticket Bot</span><span className="bg-[#5865F2] text-[10px] text-white px-1 rounded-[3px] flex items-center h-[15px] leading-none mt-[1px]">BOT</span><span className="text-gray-400 text-xs ml-1">Today at {clientTime}</span></div>
+                                <div className="text-[#dbdee1] whitespace-pre-wrap break-words leading-relaxed text-[15px]">{response.text ? <DiscordMarkdown text={response.text} /> : <span className="text-gray-500 italic text-sm">Schreibe etwas...</span>}</div>
+                                </div>
                             </div>
-                            <div className="flex flex-col text-left w-full min-w-0">
-                            <div className="flex items-center gap-2 mb-0.5">
-                                <span className="text-white font-medium hover:underline cursor-pointer">Ticket Bot</span>
-                                <span className="bg-[#5865F2] text-[10px] text-white px-1 rounded-[3px] flex items-center h-[15px] leading-none mt-[1px]">BOT</span>
-                                <span className="text-gray-400 text-xs ml-1">Today at {new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</span>
-                            </div>
-                            <div className="text-[#dbdee1] whitespace-pre-wrap break-words leading-relaxed text-[15px]">
-                                {response.text ? <DiscordMarkdown text={response.text} /> : <span className="text-gray-500 italic text-sm">Schreibe etwas...</span>}
-                            </div>
-                            </div>
+                            ) : <EmbedPreview embed={{ ...response.embed, thumbnail_url: response.embed.thumbnail_url === "{user_avatar}" ? "https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_1280.png" : response.embed.thumbnail_url }} content={response.content} botName="Ticket Bot" botIconUrl={guildIconUrl} />}
                         </div>
-                        ) : (
-                        <EmbedPreview
-                            embed={{ ...response.embed, thumbnail_url: response.embed.thumbnail_url === "{user_avatar}" ? "https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_1280.png" : response.embed.thumbnail_url }}
-                            content={response.content} botName="Ticket Bot" botIconUrl={guildIconUrl}
-                        />
+                        )}
+                        {editorTab === "panel" && (
+                        <div className="bg-[#2b2d31] rounded-md p-4 transition-all duration-300 border border-black/10">
+                            <EmbedPreview embed={{ ...settings?.panelEmbed, image: settings?.panelEmbed?.image_url ? { url: settings.panelEmbed.image_url } : undefined }} content="" botName="Ticket System" botIconUrl={guildIconUrl}>
+                            <div className="flex gap-2 flex-wrap mt-2">{settings?.panelButtonText ? <DiscordButton label={settings.panelButtonText} emoji="📩" style={settings.panelButtonStyle} /> : <><DiscordButton label="DE" emoji="🇩🇪" /><DiscordButton label="EN" emoji="🇺🇸" /></>}</div>
+                            </EmbedPreview>
+                        </div>
                         )}
                     </div>
-                    )}
-                    {editorTab === "panel" && (
-                    <div className="bg-[#313338] rounded-md p-4 transition-all duration-300">
-                        <EmbedPreview embed={{ ...settings?.panelEmbed, image: settings?.panelEmbed?.image_url ? { url: settings.panelEmbed.image_url } : undefined }} content="" botName="Ticket System" botIconUrl={guildIconUrl}>
-                        <div className="flex gap-2 flex-wrap mt-2">
-                            {settings?.panelButtonText ? <DiscordButton label={settings.panelButtonText} emoji="📩" style={settings.panelButtonStyle} /> : <><DiscordButton label="DE" emoji="🇩🇪" /><DiscordButton label="EN" emoji="🇺🇸" /></>}
-                        </div>
-                        </EmbedPreview>
-                    </div>
-                    )}
+                  </div>
                 </div>
+
+                {/* MINIMIZED BUTTON */}
+                {isPreviewMinimized && <button onClick={() => setIsPreviewMinimized(false)} className="hidden xl:flex fixed right-6 bottom-6 z-50 bg-primary hover:bg-primary/90 text-primary-foreground w-14 h-14 rounded-full shadow-2xl items-center justify-center transition-transform hover:scale-110" title="Vorschau anzeigen"><Maximize2 className="w-6 h-6" /></button>}
+                
+                {/* MOBILE TOGGLE & OVERLAY */}
+                {editorTab !== "config" && <button onClick={() => setShowMobilePreview(true)} className="xl:hidden fixed right-4 bottom-4 z-40 bg-primary hover:bg-primary/90 text-primary-foreground w-12 h-12 rounded-full shadow-lg flex items-center justify-center active:scale-95 transition-all"><Eye className="w-6 h-6" /></button>}
+                {showMobilePreview && (
+                  <div className="xl:hidden fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+                    <div className="bg-card border border-border w-full max-w-md max-h-[80vh] rounded-lg shadow-2xl flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+                      <div className="flex items-center justify-between p-4 border-b border-border bg-muted/50">
+                        <h3 className="text-foreground font-bold text-sm uppercase">Vorschau</h3>
+                        <button onClick={() => setShowMobilePreview(false)} className="text-muted-foreground hover:text-foreground"><X className="w-5 h-5" /></button>
+                      </div>
+                      <div className="p-4 overflow-y-auto custom-scrollbar bg-[#313338]">
+                        {editorTab === "modal" && <ModalPreview modal={modal} guildIconUrl={guildIconUrl} />}
+                        {editorTab === "response" && (<div className="bg-[#313338]">{response.type === "text" ? (<div className="flex gap-3 group items-start"><img src={guildIconUrl} className="w-8 h-8 rounded-full bg-[#1e1f22]" /><div><div className="flex items-center gap-2"><span className="text-white font-bold text-sm">Ticket Bot</span><span className="bg-[#5865F2] text-[10px] text-white px-1 rounded">BOT</span></div><div className="text-gray-200 text-sm mt-1 whitespace-pre-wrap"><DiscordMarkdown text={response.text || "..."} /></div></div></div>) : <EmbedPreview embed={response.embed} content={response.content} botName="Ticket Bot" botIconUrl={guildIconUrl} />}</div>)}
+                        {editorTab === "panel" && (<div className="bg-[#313338]"><EmbedPreview embed={settings?.panelEmbed} content="" botName="Ticket System" botIconUrl={guildIconUrl}><div className="flex gap-2 flex-wrap mt-2">{settings?.panelButtonText ? <DiscordButton label={settings.panelButtonText} emoji="📩" style={settings.panelButtonStyle} /> : <><DiscordButton label="DE" emoji="🇩🇪" /><DiscordButton label="EN" emoji="🇺🇸" /></>}</div></EmbedPreview></div>)}
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
-
-            {/* MINIMIZED BUTTON */}
-            {isPreviewMinimized && (
-                 <button onClick={() => setIsPreviewMinimized(false)} className="hidden xl:flex fixed right-6 bottom-6 z-50 bg-[#5865F2] hover:bg-[#4752C4] text-white w-14 h-14 rounded-full shadow-2xl items-center justify-center transition-transform hover:scale-110" title="Vorschau anzeigen">
-                     <Maximize2 className="w-6 h-6" />
-                 </button>
-            )}
-
-            {/* MOBILE TOGGLE & OVERLAY */}
-            {editorTab !== "config" && (
-                <button onClick={() => setShowMobilePreview(true)} className="xl:hidden fixed right-4 bottom-4 z-40 bg-[#5865F2] hover:bg-[#4752C4] text-white w-12 h-12 rounded-full shadow-lg flex items-center justify-center active:scale-95 transition-all">
-                <Eye className="w-6 h-6" />
-                </button>
-            )}
-
-            {showMobilePreview && (
-                <div className="xl:hidden fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
-                     <div className="bg-[#111214] border border-white/10 w-full max-w-md max-h-[80vh] rounded-lg shadow-2xl flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-200">
-                        <div className="flex items-center justify-between p-4 border-b border-white/10 bg-[#1e1f22]">
-                            <h3 className="text-white font-bold text-sm uppercase">Vorschau</h3>
-                            <button onClick={() => setShowMobilePreview(false)} className="text-gray-400 hover:text-white"><X className="w-5 h-5" /></button>
-                        </div>
-                        <div className="p-4 overflow-y-auto custom-scrollbar bg-[#313338]">
-                             {editorTab === "modal" && <ModalPreview modal={modal} guildIconUrl={guildIconUrl} />}
-                             {editorTab === "response" && (
-                                <div className="bg-[#313338]">
-                                    {response.type === "text" ? (
-                                        <div className="flex gap-3 group items-start">
-                                            <img src={guildIconUrl} className="w-8 h-8 rounded-full bg-[#1e1f22]" />
-                                            <div>
-                                                <div className="flex items-center gap-2"><span className="text-white font-bold text-sm">Ticket Bot</span><span className="bg-[#5865F2] text-[10px] text-white px-1 rounded">BOT</span></div>
-                                                <div className="text-gray-200 text-sm mt-1 whitespace-pre-wrap"><DiscordMarkdown text={response.text || "..."} /></div>
-                                            </div>
-                                        </div>
-                                    ) : <EmbedPreview embed={response.embed} content={response.content} botName="Ticket Bot" botIconUrl={guildIconUrl} />}
-                                </div>
-                             )}
-                             {editorTab === "panel" && (
-                                <div className="bg-[#313338]">
-                                    <EmbedPreview embed={settings?.panelEmbed} content="" botName="Ticket System" botIconUrl={guildIconUrl}>
-                                        <div className="flex gap-2 flex-wrap mt-2">{settings?.panelButtonText ? <DiscordButton label={settings.panelButtonText} emoji="📩" style={settings.panelButtonStyle} /> : <><DiscordButton label="DE" emoji="🇩🇪" /><DiscordButton label="EN" emoji="🇺🇸" /></>}</div>
-                                    </EmbedPreview>
-                                </div>
-                             )}
-                        </div>
-                     </div>
-                </div>
-            )}
-
-          </div>
-        </div>
+          )}
+        </>
       )}
     </div>
   );

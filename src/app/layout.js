@@ -1,41 +1,60 @@
 import { Inter } from "next/font/google";
-import { Providers } from "@/components/Providers";
-import Navbar from "@/components/Navbar";
-import TopLoader from "@/components/TopLoader";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/app/api/auth/[...nextauth]/route";
-import { Suspense } from "react";
 import "./globals.css";
+import Providers from "@/components/Providers";
+import Navbar from "@/components/Navbar"; 
+import TopLoader from "@/components/TopLoader"; 
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/app/api/auth/[...nextauth]/route"; 
 
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata = {
-  title: "Mein Bot Dashboard", // Dein Titel hier
-  description: "Manage deine Community",
-  icons: {
-    icon: '/favicon.ico', // Stelle sicher, dass dein Icon so heißt
-  },
+  title: "BotPanel",
+  description: "Dein Dashboard",
 };
 
 export default async function RootLayout({ children }) {
   const session = await getServerSession(authOptions);
 
   return (
-    <html lang="de" className="dark" style={{ colorScheme: 'dark' }}>
-      <body className={`${inter.className} antialiased h-screen flex flex-col bg-[#1a1c1f] text-gray-100 overflow-hidden`}>
-        <Suspense fallback={null}>
-          <TopLoader />
-        </Suspense>
+    <html lang="de" suppressHydrationWarning>
+      <head>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              (function() {
+                try {
+                  // 1. Akzentfarbe (Style Tag erstellen)
+                  var savedColor = localStorage.getItem('accent-hsl');
+                  var style = document.createElement('style');
+                  style.id = 'custom-theme';
+                  if (savedColor) {
+                    style.innerHTML = ':root { --primary: ' + savedColor + ' !important; --ring: ' + savedColor + ' !important; }';
+                  }
+                  document.head.appendChild(style);
 
+                  // 2. Darkmode Check
+                  var savedTheme = localStorage.getItem('theme');
+                  var isDark = savedTheme === 'dark' || (!savedTheme && window.matchMedia('(prefers-color-scheme: dark)').matches);
+                  
+                  if (isDark) {
+                    document.documentElement.classList.add('dark');
+                    // TRICK: Hintergrundfarbe sofort hart setzen, um weißen Blitz zu verhindern, bevor CSS lädt
+                    document.documentElement.style.backgroundColor = '#1e1f22'; // Dein Dark-Background Hex-Code (ungefähr)
+                  } else {
+                    document.documentElement.classList.remove('dark');
+                  }
+                } catch (e) {}
+              })();
+            `,
+          }}
+        />
+      </head>
+      <body className={inter.className}>
         <Providers session={session}>
-          {/* Navbar ist immer da und verschwindet nie beim Neuladen */}
-          <Navbar /> 
-          
-          {/* Der main-Tag ist der Scroll-Container. 
-              Er existiert ab Sekunde 0, weshalb auch die Scrollbar sofort da ist. */}
-          <main className="flex-1 overflow-y-auto custom-scroll pt-16"> 
-            {children}
-          </main>
+          <TopLoader />
+          <Navbar />
+          <main>{children}</main>
         </Providers>
       </body>
     </html>

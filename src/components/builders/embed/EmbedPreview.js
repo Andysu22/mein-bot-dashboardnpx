@@ -3,7 +3,6 @@
 import React from "react";
 import DiscordMarkdown from "@/components/builders/shared/DiscordMarkdown";
 import { cn } from "@/lib/utils";
-// ✅ NEU: Icon importieren
 import { Copy } from "lucide-react";
 
 function toHexColor(s) {
@@ -13,7 +12,6 @@ function toHexColor(s) {
   return /^#[0-9a-fA-F]{6}$/.test(v) ? v.toUpperCase() : "#5865F2";
 }
 
-// Funktion um Codeblöcke manuell zu rendern (jetzt mit visuellem Copy-Icon)
 function renderFieldContent(text) {
   if (!text) return null;
 
@@ -27,12 +25,9 @@ function renderFieldContent(text) {
         content = content.replace(/^[a-zA-Z0-9]+\n/, "");
       }
 
-      // ✅ ÄNDERUNG HIER:
       return (
-        // 1. 'relative' und 'group' hinzufügen
         <div key={index} className="discord-md__codeblock relative group pr-8">
           {content}
-          {/* 2. Das visuelle Copy-Icon */}
           <div className="absolute top-2 right-2 p-1 rounded bg-[#1e1f22] text-[#b5bac1] opacity-0 group-hover:opacity-100 transition-opacity select-none pointer-events-none">
             <Copy className="w-3.5 h-3.5" />
           </div>
@@ -69,7 +64,6 @@ export default function EmbedPreview({
   return (
     <div className="w-full bg-[#313338] rounded-xl border border-[#2b2d31] p-4 font-sans text-left">
       <div className="flex gap-3">
-        {/* BOT AVATAR */}
         <img
           src={avatar}
           className="w-10 h-10 rounded-full bg-[#1e1f22] shrink-0"
@@ -77,7 +71,6 @@ export default function EmbedPreview({
         />
 
         <div className="flex-1 min-w-0">
-          {/* HEADER */}
           <div className="flex items-center gap-2 mb-1 flex-wrap">
             <span className="text-white font-medium hover:underline cursor-pointer">
               {name}
@@ -94,14 +87,12 @@ export default function EmbedPreview({
             </span>
           </div>
 
-          {/* MESSAGE CONTENT */}
           {content && (
             <div className="text-[#dbdee1] text-sm mb-2 leading-relaxed">
               <DiscordMarkdown text={content} />
             </div>
           )}
 
-          {/* EMBED */}
           <div className="flex max-w-full">
             <div
               className="w-[4px] rounded-l shrink-0"
@@ -134,7 +125,6 @@ export default function EmbedPreview({
                 )}
               </div>
 
-              {/* FIELDS */}
               {Array.isArray(data.fields) && data.fields.length > 0 && (
                 <div className="flex flex-wrap gap-4 mt-2">
                   {data.fields.map((field) => (

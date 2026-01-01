@@ -1,4 +1,3 @@
-// src/components/builders/embed/EmbedBuilder.js
 "use client";
 
 import React, { useState, useRef, useEffect } from "react";
@@ -46,18 +45,18 @@ function ModernColorPicker({ value, onChange }) {
 
   return (
     <div className="relative" ref={containerRef}>
-      <button type="button" onClick={() => setIsOpen(!isOpen)} className="flex items-center gap-2 bg-[#111214] border border-white/10 rounded-md px-2 py-1.5 hover:border-white/20 transition-all group">
-        <div className="w-5 h-5 rounded-[4px] shadow-sm border border-white/10" style={{ backgroundColor: value }} />
-        <span className="font-mono text-xs text-gray-300 group-hover:text-white uppercase">{value}</span>
-        <ChevronDown className="w-3 h-3 text-gray-500 ml-1" />
+      <button type="button" onClick={() => setIsOpen(!isOpen)} className="flex items-center gap-2 bg-background border border-input rounded-md px-2 py-1.5 hover:border-primary/50 transition-all group">
+        <div className="w-5 h-5 rounded-[4px] shadow-sm border border-border" style={{ backgroundColor: value }} />
+        <span className="font-mono text-xs text-muted-foreground group-hover:text-foreground uppercase">{value}</span>
+        <ChevronDown className="w-3 h-3 text-muted-foreground ml-1" />
       </button>
 
       {isOpen && (
-        <div className="absolute top-full right-0 mt-2 z-50 bg-[#1e1f22] border border-white/10 rounded-lg shadow-2xl p-3 w-56 animate-in fade-in zoom-in-95 duration-100">
-           <div className="text-[10px] font-bold text-gray-400 uppercase mb-2">Presets</div>
+        <div className="absolute top-full right-0 mt-2 z-50 bg-popover border border-border rounded-lg shadow-2xl p-3 w-56 animate-in fade-in zoom-in-95 duration-100">
+           <div className="text-[10px] font-bold text-muted-foreground uppercase mb-2">Presets</div>
            <div className="grid grid-cols-4 gap-2 mb-4">
               {presets.map(color => (
-                  <button key={color} onClick={() => { onChange(color); setIsOpen(false); }} className="w-full aspect-square rounded-md border border-white/5 hover:scale-105 transition-transform relative group" style={{ backgroundColor: color }}>
+                  <button key={color} onClick={() => { onChange(color); setIsOpen(false); }} className="w-full aspect-square rounded-md border border-border hover:scale-105 transition-transform relative group" style={{ backgroundColor: color }}>
                      {value.toUpperCase() === color && (
                          <div className="absolute inset-0 flex items-center justify-center">
                              <Check className={cn("w-4 h-4 shadow-sm", color === '#FFFFFF' || color === '#FEE75C' || color === '#57F287' ? "text-black" : "text-white")} />
@@ -66,13 +65,13 @@ function ModernColorPicker({ value, onChange }) {
                   </button>
               ))}
            </div>
-           <div className="text-[10px] font-bold text-gray-400 uppercase mb-2">Custom</div>
+           <div className="text-[10px] font-bold text-muted-foreground uppercase mb-2">Custom</div>
            <div className="flex gap-2">
               <div className="relative flex-1">
-                 <span className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-500 text-xs">#</span>
-                 <input value={value.replace('#', '')} onChange={(e) => onChange(`#${e.target.value}`)} className="w-full bg-[#111214] border border-white/10 rounded-md pl-5 pr-2 py-1.5 text-xs text-white uppercase focus:border-[#5865F2] outline-none" maxLength={6} />
+                 <span className="absolute left-2 top-1/2 -translate-y-1/2 text-muted-foreground text-xs">#</span>
+                 <input value={value.replace('#', '')} onChange={(e) => onChange(`#${e.target.value}`)} className="w-full bg-background border border-input rounded-md pl-5 pr-2 py-1.5 text-xs text-foreground uppercase focus:border-primary outline-none" maxLength={6} />
               </div>
-              <div className="relative w-8 h-8 rounded-md overflow-hidden border border-white/10">
+              <div className="relative w-8 h-8 rounded-md overflow-hidden border border-input">
                  <input type="color" value={toHexColor(value)} onChange={(e) => onChange(e.target.value)} className="absolute inset-[-4px] w-[150%] h-[150%] cursor-pointer p-0 border-0" />
               </div>
            </div>
@@ -97,21 +96,21 @@ function CollapsibleBuilderSection({ title, icon: Icon, children, defaultOpen = 
   }, [isOpen]);
 
   return (
-    <div className="border border-white/10 rounded-md bg-[#16171a] transition-all duration-200">
-      <div className="w-full flex items-center justify-between px-4 py-3 bg-[#1e1f22] hover:bg-[#232428] transition-colors rounded-t-md cursor-pointer select-none" onClick={(e) => { if(e.target.tagName !== 'INPUT' && e.target.tagName !== 'BUTTON') { setIsOpen(!isOpen); } }}>
-        <div className="flex items-center gap-2.5 text-gray-200 font-medium text-sm">
-          {Icon && <Icon className="w-4 h-4 text-[#5865F2]" />}
+    <div className="border border-border rounded-md bg-card transition-all duration-200 shadow-sm">
+      <div className="w-full flex items-center justify-between px-4 py-3 bg-muted/30 hover:bg-muted/50 transition-colors rounded-t-md cursor-pointer select-none" onClick={(e) => { if(e.target.tagName !== 'INPUT' && e.target.tagName !== 'BUTTON') { setIsOpen(!isOpen); } }}>
+        <div className="flex items-center gap-2.5 text-foreground font-medium text-sm">
+          {Icon && <Icon className="w-4 h-4 text-primary" />}
           <span>{title}</span>
         </div>
         <div className="flex items-center gap-3">
             {extraAction && <div onClick={e => e.stopPropagation()}>{extraAction}</div>}
-            <button onClick={() => setIsOpen(!isOpen)} className="text-gray-500 hover:text-white transition-colors">
+            <button onClick={() => setIsOpen(!isOpen)} className="text-muted-foreground hover:text-foreground transition-colors">
                 {isOpen ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
             </button>
         </div>
       </div>
       <div className={cn("transition-[max-height,opacity] duration-300 ease-in-out", isOpen ? "max-h-[2000px] opacity-100" : "max-h-0 opacity-0 overflow-hidden")} style={{ overflow: isAnimationDone && isOpen ? "visible" : "hidden" }}>
-        <div className="p-5 border-t border-white/5 space-y-5">{children}</div>
+        <div className="p-5 border-t border-border space-y-5">{children}</div>
       </div>
     </div>
   );
@@ -120,7 +119,7 @@ function CollapsibleBuilderSection({ title, icon: Icon, children, defaultOpen = 
 // --- Toggle Switch ---
 function ToggleSwitch({ checked, onChange }) {
   return (
-    <div onClick={(e) => { e.stopPropagation(); onChange(!checked); }} className={cn("w-9 h-5 rounded-full relative cursor-pointer transition-colors duration-200 ease-in-out border border-transparent", checked ? "bg-[#5865F2]" : "bg-[#3f4147]")}>
+    <div onClick={(e) => { e.stopPropagation(); onChange(!checked); }} className={cn("w-9 h-5 rounded-full relative cursor-pointer transition-colors duration-200 ease-in-out border border-transparent", checked ? "bg-primary" : "bg-input")}>
       <div className={cn("w-3.5 h-3.5 bg-white rounded-full absolute top-[2px] shadow-sm transition-transform duration-200 ease-in-out", checked ? "translate-x-4" : "translate-x-0.5")} />
     </div>
   );
@@ -131,44 +130,44 @@ function SortableFieldRow({ field, onChange, onDelete, listeners, attributes, se
   const style = { transform: CSS.Translate.toString(transform), transition, opacity: isDragging ? 0.5 : 1, position: "relative", zIndex: isDragging ? 50 : "auto" };
 
   return (
-    <div ref={setNodeRef} style={style} className={cn("rounded-md border bg-[#1e1f22] overflow-hidden mb-2 group", isDragging ? "border-[#5865F2] shadow-xl ring-1 ring-[#5865F2]" : "border-white/5 hover:border-white/10")}>
-      <div className="flex items-center gap-3 p-3 cursor-pointer select-none bg-[#2b2d31]/50 hover:bg-[#2b2d31]" onClick={() => onChange({ ...field, collapsed: !field.collapsed })}>
-        <button type="button" className="touch-none text-gray-500 hover:text-gray-300 cursor-grab active:cursor-grabbing p-1" {...attributes} {...listeners}>
+    <div ref={setNodeRef} style={style} className={cn("rounded-md border overflow-hidden mb-2 group", isDragging ? "border-primary shadow-xl ring-1 ring-primary bg-card" : "bg-card border-border hover:border-primary/30")}>
+      <div className="flex items-center gap-3 p-3 cursor-pointer select-none bg-muted/30 hover:bg-muted/50" onClick={() => onChange({ ...field, collapsed: !field.collapsed })}>
+        <button type="button" className="touch-none text-muted-foreground hover:text-foreground cursor-grab active:cursor-grabbing p-1" {...attributes} {...listeners}>
           <GripVertical className="h-4 w-4" />
         </button>
         <div className="flex-1 min-w-0">
            <div className="flex items-center gap-2">
-             <span className={cn("text-xs font-bold truncate", field.name ? "text-gray-200" : "text-gray-500 italic")}>
+             <span className={cn("text-xs font-bold truncate", field.name ? "text-foreground" : "text-muted-foreground italic")}>
                 {field.name || "Unbenanntes Feld"}
              </span>
-             {field.inline && <span className="text-[9px] uppercase font-bold bg-[#5865F2]/20 text-[#5865F2] px-1.5 py-0.5 rounded-[3px]">Inline</span>}
+             {field.inline && <span className="text-[9px] uppercase font-bold bg-primary/10 text-primary px-1.5 py-0.5 rounded-[3px]">Inline</span>}
            </div>
         </div>
         <div className="flex items-center gap-2">
-            <button type="button" onClick={(e) => { e.stopPropagation(); onDelete(field.id); }} className="p-1.5 text-gray-500 hover:text-red-400 hover:bg-red-500/10 rounded transition-colors opacity-0 group-hover:opacity-100">
+            <button type="button" onClick={(e) => { e.stopPropagation(); onDelete(field.id); }} className="p-1.5 text-muted-foreground hover:text-red-500 hover:bg-red-500/10 rounded transition-colors opacity-0 group-hover:opacity-100">
                 <Trash2 className="w-4 h-4" />
             </button>
-            <div className="text-gray-500">
+            <div className="text-muted-foreground">
                 {field.collapsed ? <ChevronRight className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
             </div>
         </div>
       </div>
       {!field.collapsed && (
-        <div className="p-4 space-y-4 border-t border-white/5">
+        <div className="p-4 space-y-4 border-t border-border">
             <div className="grid grid-cols-1 gap-4">
                 <div className="space-y-1.5">
-                    <label className="text-[10px] uppercase font-bold text-gray-400 pl-1">Titel</label>
-                    <input value={field.name} onChange={(e) => onChange({...field, name: e.target.value})} className="w-full bg-[#111214] border border-white/10 rounded-md px-3 py-2 text-sm text-white focus:border-[#5865F2] outline-none transition-all placeholder:text-gray-600" placeholder="Feld Name..." maxLength={256} />
+                    <label className="text-[10px] uppercase font-bold text-muted-foreground pl-1">Titel</label>
+                    <input value={field.name} onChange={(e) => onChange({...field, name: e.target.value})} className="w-full bg-background border border-input rounded-md px-3 py-2 text-sm text-foreground focus:border-primary outline-none transition-all placeholder:text-muted-foreground" placeholder="Feld Name..." maxLength={256} />
                 </div>
                 <div className="space-y-1.5">
-                    <label className="text-[10px] uppercase font-bold text-gray-400 pl-1">Inhalt</label>
-                    <textarea value={field.value} onChange={(e) => onChange({...field, value: e.target.value})} className="w-full bg-[#111214] border border-white/10 rounded-md px-3 py-2 text-sm text-white focus:border-[#5865F2] outline-none transition-all resize-y min-h-[80px] placeholder:text-gray-600" placeholder="Was soll hier stehen?" maxLength={1024} />
+                    <label className="text-[10px] uppercase font-bold text-muted-foreground pl-1">Inhalt</label>
+                    <textarea value={field.value} onChange={(e) => onChange({...field, value: e.target.value})} className="w-full bg-background border border-input rounded-md px-3 py-2 text-sm text-foreground focus:border-primary outline-none transition-all resize-y min-h-[80px] placeholder:text-muted-foreground" placeholder="Was soll hier stehen?" maxLength={1024} />
                 </div>
             </div>
-            <div className="flex items-center justify-between pt-2 border-t border-white/5">
+            <div className="flex items-center justify-between pt-2 border-t border-border">
                 <div className="flex flex-col">
-                    <span className="text-xs font-bold text-gray-300">Inline Anzeigen</span>
-                    <span className="text-[10px] text-gray-500">Zeigt dieses Feld neben dem vorherigen an.</span>
+                    <span className="text-xs font-bold text-foreground">Inline Anzeigen</span>
+                    <span className="text-[10px] text-muted-foreground">Zeigt dieses Feld neben dem vorherigen an.</span>
                 </div>
                 <ToggleSwitch checked={field.inline} onChange={(v) => onChange({...field, inline: v})} />
             </div>
@@ -215,13 +214,12 @@ export default function EmbedBuilder({ data, onChange, hiddenSections = [] }) {
         >
             <div className="space-y-3">
                 <div className="space-y-1.5">
-                    <label className="text-[10px] uppercase font-bold text-gray-400 pl-1 flex items-center gap-1.5"><Type className="w-3 h-3"/> Embed Titel</label>
-                    {/* ✅ FIX: Hier habe ich font-medium entfernt, falls dich das Fettdrucken im Eingabefeld gestört hat */}
-                    <input value={data.title || ""} onChange={(e) => onChange({...data, title: e.target.value})} className="w-full bg-[#111214] border border-white/10 rounded-md px-3 py-2 text-sm font-normal text-white focus:border-[#5865F2] outline-none transition-all placeholder:text-gray-600" placeholder="Titel des Embeds" maxLength={256} />
+                    <label className="text-[10px] uppercase font-bold text-muted-foreground pl-1 flex items-center gap-1.5"><Type className="w-3 h-3"/> Embed Titel</label>
+                    <input value={data.title || ""} onChange={(e) => onChange({...data, title: e.target.value})} className="w-full bg-background border border-input rounded-md px-3 py-2 text-sm font-normal text-foreground focus:border-primary outline-none transition-all placeholder:text-muted-foreground" placeholder="Titel des Embeds" maxLength={256} />
                 </div>
                 <div className="space-y-1.5">
-                    <label className="text-[10px] uppercase font-bold text-gray-400 pl-1 flex items-center gap-1.5"><Layout className="w-3 h-3"/> Beschreibung</label>
-                    <textarea value={data.description || ""} onChange={(e) => onChange({...data, description: e.target.value})} className="w-full bg-[#111214] border border-white/10 rounded-md px-3 py-2 text-sm text-gray-300 focus:border-[#5865F2] outline-none transition-all resize-y min-h-[100px] placeholder:text-gray-600 leading-relaxed custom-scrollbar" placeholder="Schreibe hier den Hauptinhalt..." maxLength={4096} />
+                    <label className="text-[10px] uppercase font-bold text-muted-foreground pl-1 flex items-center gap-1.5"><Layout className="w-3 h-3"/> Beschreibung</label>
+                    <textarea value={data.description || ""} onChange={(e) => onChange({...data, description: e.target.value})} className="w-full bg-background border border-input rounded-md px-3 py-2 text-sm text-foreground focus:border-primary outline-none transition-all resize-y min-h-[100px] placeholder:text-muted-foreground leading-relaxed custom-scrollbar" placeholder="Schreibe hier den Hauptinhalt..." maxLength={4096} />
                 </div>
             </div>
         </CollapsibleBuilderSection>
@@ -230,12 +228,12 @@ export default function EmbedBuilder({ data, onChange, hiddenSections = [] }) {
             <CollapsibleBuilderSection title="Autor" icon={User} defaultOpen={false}>
                  <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                     <div className="space-y-1.5">
-                        <label className="text-[10px] uppercase font-bold text-gray-400 pl-1">Autor Name</label>
-                        <input value={data.author?.name || ""} onChange={(e) => onChange({...data, author: {...data.author, name: e.target.value}})} className="w-full bg-[#111214] border border-white/10 rounded-md px-3 py-2 text-sm text-white focus:border-[#5865F2] outline-none" placeholder="Name..." maxLength={256} />
+                        <label className="text-[10px] uppercase font-bold text-muted-foreground pl-1">Autor Name</label>
+                        <input value={data.author?.name || ""} onChange={(e) => onChange({...data, author: {...data.author, name: e.target.value}})} className="w-full bg-background border border-input rounded-md px-3 py-2 text-sm text-foreground focus:border-primary outline-none" placeholder="Name..." maxLength={256} />
                     </div>
                     <div className="space-y-1.5">
-                        <label className="text-[10px] uppercase font-bold text-gray-400 pl-1 flex items-center gap-1"><LinkIcon className="w-3 h-3"/> Icon URL</label>
-                        <input value={data.author?.icon_url || ""} onChange={(e) => onChange({...data, author: {...data.author, icon_url: e.target.value}})} className="w-full bg-[#111214] border border-white/10 rounded-md px-3 py-2 text-sm text-gray-400 focus:border-[#5865F2] outline-none font-mono" placeholder="https://..." />
+                        <label className="text-[10px] uppercase font-bold text-muted-foreground pl-1 flex items-center gap-1"><LinkIcon className="w-3 h-3"/> Icon URL</label>
+                        <input value={data.author?.icon_url || ""} onChange={(e) => onChange({...data, author: {...data.author, icon_url: e.target.value}})} className="w-full bg-background border border-input rounded-md px-3 py-2 text-sm text-muted-foreground focus:border-primary outline-none font-mono" placeholder="https://..." />
                     </div>
                 </div>
             </CollapsibleBuilderSection>
@@ -245,12 +243,12 @@ export default function EmbedBuilder({ data, onChange, hiddenSections = [] }) {
             <CollapsibleBuilderSection title="Bilder" icon={ImageIcon} defaultOpen={false}>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                     <div className="space-y-1.5">
-                        <label className="text-[10px] uppercase font-bold text-gray-400 pl-1">Thumbnail (Klein rechts)</label>
-                        <input value={data.thumbnail_url || ""} onChange={(e) => onChange({...data, thumbnail_url: e.target.value})} className="w-full bg-[#111214] border border-white/10 rounded-md px-3 py-2 text-sm text-gray-400 focus:border-[#5865F2] outline-none font-mono" placeholder="https://..." />
+                        <label className="text-[10px] uppercase font-bold text-muted-foreground pl-1">Thumbnail (Klein rechts)</label>
+                        <input value={data.thumbnail_url || ""} onChange={(e) => onChange({...data, thumbnail_url: e.target.value})} className="w-full bg-background border border-input rounded-md px-3 py-2 text-sm text-muted-foreground focus:border-primary outline-none font-mono" placeholder="https://..." />
                     </div>
                     <div className="space-y-1.5">
-                        <label className="text-[10px] uppercase font-bold text-gray-400 pl-1">Hauptbild (Groß unten)</label>
-                        <input value={data.image_url || ""} onChange={(e) => onChange({...data, image_url: e.target.value})} className="w-full bg-[#111214] border border-white/10 rounded-md px-3 py-2 text-sm text-gray-400 focus:border-[#5865F2] outline-none font-mono" placeholder="https://..." />
+                        <label className="text-[10px] uppercase font-bold text-muted-foreground pl-1">Hauptbild (Groß unten)</label>
+                        <input value={data.image_url || ""} onChange={(e) => onChange({...data, image_url: e.target.value})} className="w-full bg-background border border-input rounded-md px-3 py-2 text-sm text-muted-foreground focus:border-primary outline-none font-mono" placeholder="https://..." />
                     </div>
                 </div>
             </CollapsibleBuilderSection>
@@ -262,7 +260,7 @@ export default function EmbedBuilder({ data, onChange, hiddenSections = [] }) {
                 icon={Layout} 
                 defaultOpen={false}
                 extraAction={
-                    <button type="button" onClick={(e) => { e.stopPropagation(); onAddField(); }} disabled={(data.fields || []).length >= MAX_FIELDS} className={cn("px-2 py-1 rounded-sm bg-[#5865F2] hover:bg-[#4752c4] text-[10px] font-bold text-white transition flex items-center gap-1", (data.fields || []).length >= MAX_FIELDS && "opacity-50 cursor-not-allowed")}>
+                    <button type="button" onClick={(e) => { e.stopPropagation(); onAddField(); }} disabled={(data.fields || []).length >= MAX_FIELDS} className={cn("px-2 py-1 rounded-sm bg-primary hover:bg-primary/90 text-[10px] font-bold text-primary-foreground transition flex items-center gap-1", (data.fields || []).length >= MAX_FIELDS && "opacity-50 cursor-not-allowed")}>
                         <Plus className="w-3 h-3"/> Neu
                     </button>
                 }
@@ -277,8 +275,8 @@ export default function EmbedBuilder({ data, onChange, hiddenSections = [] }) {
                     </SortableContext>
                 </DndContext>
                 {(data.fields || []).length === 0 && (
-                    <div className="flex flex-col items-center justify-center py-6 border border-dashed border-white/10 rounded-md bg-white/[0.01]">
-                        <span className="text-xs text-gray-500">Keine Felder hinzugefügt.</span>
+                    <div className="flex flex-col items-center justify-center py-6 border border-dashed border-border rounded-md bg-muted/10">
+                        <span className="text-xs text-muted-foreground">Keine Felder hinzugefügt.</span>
                     </div>
                 )}
             </CollapsibleBuilderSection>
@@ -289,20 +287,20 @@ export default function EmbedBuilder({ data, onChange, hiddenSections = [] }) {
                 <div className="space-y-5">
                     <div className="grid grid-cols-1 md:grid-cols-[1fr_200px] gap-5">
                         <div className="space-y-1.5">
-                            <label className="text-[10px] uppercase font-bold text-gray-400 pl-1">Footer Text</label>
-                            <input value={data.footer?.text || ""} onChange={(e) => onChange({...data, footer: {...data.footer, text: e.target.value}})} className="w-full bg-[#111214] border border-white/10 rounded-md px-3 py-2 text-sm text-white focus:border-[#5865F2] outline-none" placeholder="Kleingedrucktes..." maxLength={2048} />
+                            <label className="text-[10px] uppercase font-bold text-muted-foreground pl-1">Footer Text</label>
+                            <input value={data.footer?.text || ""} onChange={(e) => onChange({...data, footer: {...data.footer, text: e.target.value}})} className="w-full bg-background border border-input rounded-md px-3 py-2 text-sm text-foreground focus:border-primary outline-none" placeholder="Kleingedrucktes..." maxLength={2048} />
                         </div>
                         <div className="space-y-1.5">
-                            <label className="text-[10px] uppercase font-bold text-gray-400 pl-1 flex items-center gap-1"><LinkIcon className="w-3 h-3"/> Footer Icon</label>
-                            <input value={data.footer?.icon_url || ""} onChange={(e) => onChange({...data, footer: {...data.footer, icon_url: e.target.value}})} className="w-full bg-[#111214] border border-white/10 rounded-md px-3 py-2 text-sm text-gray-400 focus:border-[#5865F2] outline-none font-mono" placeholder="https://..." />
+                            <label className="text-[10px] uppercase font-bold text-muted-foreground pl-1 flex items-center gap-1"><LinkIcon className="w-3 h-3"/> Footer Icon</label>
+                            <input value={data.footer?.icon_url || ""} onChange={(e) => onChange({...data, footer: {...data.footer, icon_url: e.target.value}})} className="w-full bg-background border border-input rounded-md px-3 py-2 text-sm text-muted-foreground focus:border-primary outline-none font-mono" placeholder="https://..." />
                         </div>
                     </div>
-                    <div className="flex items-center justify-between bg-[#111214] p-3 rounded-md border border-white/5">
+                    <div className="flex items-center justify-between bg-background p-3 rounded-md border border-input">
                         <div className="flex items-center gap-3">
-                            <div className="p-2 bg-[#1e1f22] rounded-md text-gray-400"><Clock className="w-4 h-4" /></div>
+                            <div className="p-2 bg-muted/50 rounded-md text-muted-foreground"><Clock className="w-4 h-4" /></div>
                             <div className="flex flex-col">
-                                <span className="text-xs font-bold text-gray-200 uppercase">Zeitstempel</span>
-                                <span className="text-[10px] text-gray-500">Zeigt das aktuelle Datum unten im Footer an.</span>
+                                <span className="text-xs font-bold text-foreground uppercase">Zeitstempel</span>
+                                <span className="text-[10px] text-muted-foreground">Zeigt das aktuelle Datum unten im Footer an.</span>
                             </div>
                         </div>
                         <ToggleSwitch checked={!!data.timestamp} onChange={(v) => onChange({ ...data, timestamp: v })} />

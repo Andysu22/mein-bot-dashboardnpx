@@ -2,7 +2,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { redirect } from "next/navigation";
 import Sidebar from "@/components/Sidebar";
-import PageWrapper from "@/components/PageWrapper"; // ✅ NEU
+import PageWrapper from "@/components/PageWrapper"; 
 
 async function getDiscordData(guildId) {
   const botToken = process.env.DISCORD_TOKEN;
@@ -31,12 +31,14 @@ export default async function DashboardLayout({ children, params }) {
   if (!guildData) redirect("/dashboard?error=bot_missing");
 
   return (
-    <div className="flex min-h-screen bg-[#0f1012]">
+    // Hintergrund & Text Farben angepasst an dein Theme
+    <div className="flex min-h-screen bg-background text-foreground transition-colors duration-300">
       <Sidebar guildId={guildId} guildName={guildData.guildName} guildIcon={guildData.guildIcon} />
 
-      {/* ✅ w-72 Sidebar -> ml-72 statt ml-64 */}
+      {/* lg:ml-72 sorgt für den Platz neben der Sidebar auf Desktop.
+         w-full sorgt für volle Breite im verbleibenden Raum.
+      */}
       <main className="flex-1 lg:ml-72 w-full h-full">
-        {/* ✅ PageWrapper entscheidet: modal-builder = kein Padding */}
         <PageWrapper>
           {children}
         </PageWrapper>

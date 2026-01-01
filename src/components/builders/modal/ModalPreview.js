@@ -5,7 +5,6 @@ import { createPortal } from "react-dom";
 import { nanoid } from "nanoid";
 import { cn } from "@/lib/utils";
 
-// --- Helpers aus deinem Original ---
 const KINDS = {
   TEXT_INPUT: "text_input",
   STRING_SELECT: "string_select",
@@ -84,10 +83,8 @@ function PreviewSelect({ label, description, required, placeholder, options, val
   return (
     <div className="space-y-1">
       <div className="text-xs font-semibold text-[#F2F3F5] flex items-center gap-1">{label}{required && <span className="text-[#ED4245]">*</span>}</div>
-      {/* HIER WURDE DESCRIPTION EINGEFÜGT */}
       {description && <div className="text-xs text-[#B5BAC1]">{description}</div>}
       
-      {/* ÄNDERUNG HIER: <div> statt <button> für den Container */}
       <div 
         ref={anchorRef} 
         onClick={() => setOpen((v) => !v)} 
@@ -98,7 +95,6 @@ function PreviewSelect({ label, description, required, placeholder, options, val
           <div className={cn("truncate", selected ? "text-[#DBDEE1]" : "text-[#949BA4]")}>{selected ? selected.label : placeholder}</div>
         </div>
         <div className="flex items-center gap-1">
-          {/* Dieser innere Button hat den Fehler verursacht */}
           {showClear && value && <button type="button" onClick={(e) => { e.stopPropagation(); onClear ? onClear() : onChange(""); }} className="h-7 w-7 inline-flex items-center justify-center rounded-[6px] text-[#B5BAC1] hover:text-[#DBDEE1] hover:bg-white/5 cursor-pointer">×</button>}
           <span className="w-5 text-center text-[#B5BAC1] text-base leading-none">{open ? "▴" : "▾"}</span>
         </div>
@@ -120,7 +116,6 @@ function PreviewAutoSelect({ kind, label, description, required, placeholder }) 
   return <PreviewSelect label={label} description={description} required={required} placeholder={placeholder || "Select…"} options={mock} value={val} onChange={setVal} showClear onClear={() => setVal("")} />;
 }
 
-// --- MAIN PREVIEW COMPONENT ---
 export default function ModalPreview({ modal, guildIconUrl }) {
   const [values, setValues] = useState({});
 
@@ -152,7 +147,6 @@ export default function ModalPreview({ modal, guildIconUrl }) {
           <button className="h-8 w-8 inline-flex items-center justify-center rounded-[6px] text-[#B5BAC1] hover:text-[#DBDEE1] hover:bg-white/5 cursor-pointer">✕</button>
         </div>
         
-        {/* Warning Badge (Optional) */}
         {modal.show_warning && (
            <div className="px-5 mb-4">
              <div className="flex items-start gap-3 rounded-[6px] border border-[#F0B232]/50 bg-[#2B2D31] px-3 py-2">
@@ -162,35 +156,28 @@ export default function ModalPreview({ modal, guildIconUrl }) {
            </div>
         )}
 
-        {/* Content Body */}
         <div className="space-y-4 px-5 pb-4 max-h-[500px] overflow-y-auto custom-scrollbar">
           {(modal.components || []).map((c) => {
-            
-            // Text Display
             if (c.kind === KINDS.TEXT_DISPLAY) return <div key={c.id} className="rounded-[6px] bg-[#17181b] p-3 ring-1 ring-[#3b3d44] text-sm text-[#DBDEE1] whitespace-pre-wrap">{c.content || ""}</div>;
             
-            // Text Input
             if (c.kind === KINDS.TEXT_INPUT) {
               const v = values[c.id] ?? "";
               return (
                 <div key={c.id} className="space-y-1">
                   <div className="text-xs font-semibold text-[#F2F3F5] flex items-center gap-1">{c.label}{c.required && <span className="text-[#ED4245]">*</span>}</div>
-                  
-                  {/* HIER WURDE DESCRIPTION EINGEFÜGT */}
                   {c.description && <div className="text-xs text-[#B5BAC1]">{c.description}</div>}
-                  
                   {c.style === 2 ? (
                     <textarea 
                         value={v} 
                         onChange={(e) => setValues(s => ({...s, [c.id]: e.target.value}))} 
-                        placeholder={c.placeholder || ""} // HIER WURDE PLACEHOLDER EINGEFÜGT
+                        placeholder={c.placeholder || ""} 
                         className="w-full min-h-[96px] resize-none rounded-[6px] bg-[#17181b] px-3 py-2 text-sm text-[#DBDEE1] ring-1 ring-[#3b3d44] outline-none focus:ring-2 focus:ring-[#5865F2]" 
                     />
                   ) : (
                     <input 
                         value={v} 
                         onChange={(e) => setValues(s => ({...s, [c.id]: e.target.value}))} 
-                        placeholder={c.placeholder || ""} // HIER WURDE PLACEHOLDER EINGEFÜGT
+                        placeholder={c.placeholder || ""} 
                         className="w-full h-10 rounded-[6px] bg-[#17181b] px-3 py-2 text-sm text-[#DBDEE1] ring-1 ring-[#3b3d44] outline-none focus:ring-2 focus:ring-[#5865F2]" 
                     />
                   )}
@@ -198,13 +185,10 @@ export default function ModalPreview({ modal, guildIconUrl }) {
               );
             }
 
-            // String Select (Dropdown)
             if (c.kind === KINDS.STRING_SELECT) return <PreviewSelect key={c.id} label={c.label} description={c.description} required={!!c.required} placeholder={c.placeholder || "Select…"} options={(c.options || []).map(o => ({ ...o, emoji: o.emoji || "" }))} value={values[c.id] ?? ""} onChange={(val) => setValues(s => ({...s, [c.id]: val}))} />;
             
-            // Auto Selects (User, Role, etc.)
             if ([KINDS.USER_SELECT, KINDS.ROLE_SELECT, KINDS.CHANNEL_SELECT, KINDS.MENTIONABLE_SELECT].includes(c.kind)) return <PreviewAutoSelect key={c.id} kind={c.kind} label={c.label} description={c.description} required={!!c.required} placeholder={c.placeholder} />;
             
-            // File Upload
             if (c.kind === KINDS.FILE_UPLOAD) return (
                 <div key={c.id} className="space-y-1">
                     <div className="text-xs font-semibold text-[#F2F3F5] flex items-center gap-1">{c.label}{c.required && <span className="text-[#ED4245]">*</span>}</div>
@@ -220,7 +204,6 @@ export default function ModalPreview({ modal, guildIconUrl }) {
           })}
         </div>
 
-        {/* Footer Buttons */}
         <div className="flex gap-3 border-t border-white/10 px-5 py-4">
           <button className="flex-1 rounded-[6px] bg-[#313338] px-3 py-2 text-sm font-semibold hover:bg-[#3A3C43] text-[#F2F3F5]" type="button">Cancel</button>
           <button className="flex-1 rounded-[6px] bg-[#5865F2] px-3 py-2 text-sm font-semibold hover:bg-[#4f5ae6] text-white" type="button">Submit</button>

@@ -1,18 +1,14 @@
-// src/components/Providers.jsx
 "use client";
 
 import { SessionProvider, useSession, signIn } from "next-auth/react";
 import { ThemeProvider } from "next-themes";
 import { useEffect } from "react";
 
-// Eine interne Komponente, die den Session-Status überwacht
 function SessionGuard({ children }) {
   const { data: session } = useSession();
 
   useEffect(() => {
-    // Wenn das Backend meldet, dass das Token kaputt/abgelaufen ist:
     if (session?.error === "RefreshAccessTokenError") {
-      // Erzwinge sofortigen Neu-Login (leitet zu Discord weiter)
       signIn("discord"); 
     }
   }, [session]);
@@ -20,11 +16,16 @@ function SessionGuard({ children }) {
   return <>{children}</>;
 }
 
-export function Providers({ children }) {
+// Wir entfernen "defaultTheme" aus den Props, brauchen wir nicht mehr zwingend
+export default function Providers({ children, session }) {
   return (
-    <SessionProvider>
-      <ThemeProvider attribute="class" defaultTheme="dark" enableSystem>
-        {/* Wir wickeln die App in den Guard ein */}
+    <SessionProvider session={session}>
+      <ThemeProvider 
+        attribute="class" 
+        defaultTheme="system" // Standard auf System
+        enableSystem={true}   
+        disableTransitionOnChange
+      >
         <SessionGuard>
           {children}
         </SessionGuard>
