@@ -305,16 +305,17 @@ function TicketContentSkeleton() {
   return (
     <div className="grid grid-cols-1 xl:grid-cols-[380px_1fr] gap-6 h-auto xl:h-[calc(100vh-380px)] min-h-[400px] animate-in fade-in duration-500">
         
-        {/* LINKE SPALTE (Kompakter: h-[350px] mobil) */}
-        <Card className="bg-card border-border flex flex-col overflow-hidden shadow-sm h-[350px] xl:h-auto rounded-lg">
-          <CardHeader className="bg-muted/30 border-b border-border py-3.5 px-4 flex flex-row justify-between items-center space-y-0">
+        {/* LINKE SPALTE SKELETON */}
+        <Card className="!gap-0 !py-0 bg-card border-border flex flex-col overflow-hidden shadow-sm h-[350px] xl:h-auto rounded-lg">
+          {/* Header Skeleton passend zur neuen Höhe */}
+          <div className="bg-muted/30 border-b border-border/50 h-12 px-4 flex items-center justify-between shrink-0">
             <Skeleton className="h-4 w-32" />
             <Skeleton className="h-5 w-8 rounded-full" />
-          </CardHeader>
+          </div>
 
-          <div className="flex-1 overflow-hidden p-2 space-y-1">
+          <div className="flex-1 overflow-hidden p-0">
             {[...Array(5)].map((_, i) => (
-              <div key={i} className="w-full p-3 rounded-md border border-transparent space-y-2.5 mb-1">
+              <div key={i} className="w-full px-4 py-5 border-b border-border/30 space-y-2">
                 <Skeleton className="h-4 w-[85%] rounded-sm" />
                 <div className="flex justify-between items-center mt-1">
                       <Skeleton className="h-3 w-24 rounded-sm" />
@@ -325,9 +326,9 @@ function TicketContentSkeleton() {
           </div>
         </Card>
 
-        {/* RECHTE SPALTE (Kompakter: h-[450px] mobil) */}
-        <Card className="bg-card border-border flex flex-col shadow-sm h-[450px] xl:h-auto rounded-lg">
-          <div className="bg-muted/30 border-b border-border p-4 flex justify-between items-center shrink-0">
+        {/* RECHTE SPALTE SKELETON */}
+        <Card className="!gap-0 !py-0 bg-card border-border flex flex-col shadow-sm h-[450px] xl:h-auto rounded-lg overflow-hidden">
+          <div className="bg-muted/30 border-b border-border/50 h-12 px-4 flex justify-between items-center shrink-0">
             <div className="flex items-center gap-3">
                <Skeleton className="w-5 h-5 rounded-sm" />
                <Skeleton className="h-5 w-48 rounded-md" />
@@ -339,6 +340,7 @@ function TicketContentSkeleton() {
           </div>
 
           <div className="flex-1 p-6 space-y-8 overflow-hidden bg-muted/20">
+            {/* Beispiel-Nachricht im Chat */}
             <div className="flex gap-3">
               <Skeleton className="w-9 h-9 rounded-full shrink-0" />
               <div className="space-y-2 flex-1 max-w-[80%]">
@@ -350,16 +352,6 @@ function TicketContentSkeleton() {
                     <Skeleton className="h-4 w-full rounded-sm" />
                     <Skeleton className="h-4 w-[90%] rounded-sm" />
                 </div>
-              </div>
-            </div>
-             <div className="flex gap-3">
-              <Skeleton className="w-9 h-9 rounded-full shrink-0 bg-primary/20" />
-              <div className="space-y-2 flex-1 max-w-[75%]">
-                 <div className="flex items-baseline gap-2">
-                  <Skeleton className="h-4 w-32 rounded-sm" />
-                  <Skeleton className="h-3 w-24 rounded-sm opacity-50" />
-                </div>
-                <Skeleton className="h-4 w-full rounded-sm" />
               </div>
             </div>
           </div>
@@ -939,35 +931,35 @@ export default function TicketsPage() {
                 </p>
             </div>
 
-            {/* BUTTONS - Jetzt Full Width mit gleichmäßig breiten Buttons */}
-<div className="bg-card p-1 rounded-lg border border-border shadow-sm flex gap-1 w-full md:w-auto overflow-x-auto no-scrollbar">
-    <button
-        onClick={() => setActiveTab("overview")}
-        disabled={loading}
-        className={cn(
-            "flex-1 md:flex-none px-4 py-2 rounded-md text-sm font-medium transition-all flex items-center justify-center gap-2 whitespace-nowrap",
-            activeTab === "overview"
-                ? "bg-primary text-primary-foreground shadow-sm"
-                : "text-muted-foreground hover:text-foreground hover:bg-muted/50",
-            loading && "opacity-50 cursor-not-allowed"
-        )}
-    >
-        <BarChart3 className="w-4 h-4" /> Übersicht
-    </button>
-    <button
-        onClick={() => setActiveTab("settings")}
-        disabled={loading}
-        className={cn(
-            "flex-1 md:flex-none px-4 py-2 rounded-md text-sm font-medium transition-all flex items-center gap-2 whitespace-nowrap",
-            activeTab === "settings"
-                ? "bg-primary text-primary-foreground shadow-sm"
-                : "text-muted-foreground hover:text-foreground hover:bg-muted/50",
-            loading && "opacity-50 cursor-not-allowed"
-        )}
-    >
-        <Settings2 className="w-4 h-4" /> Konfiguration
-    </button>
-</div>
+            {/* BUTTONS - Full Width auf Mobile, Gleichmäßig breit */}
+            <div className="bg-card p-1 rounded-lg border border-border shadow-sm flex gap-1 w-full md:w-auto overflow-x-auto no-scrollbar">
+                <button
+                    onClick={() => setActiveTab("overview")}
+                    disabled={loading}
+                    className={cn(
+                        "flex-1 md:flex-none px-4 py-2 rounded-md text-sm font-medium transition-all flex items-center justify-center gap-2 whitespace-nowrap",
+                        activeTab === "overview"
+                            ? "bg-primary text-primary-foreground shadow-sm"
+                            : "text-muted-foreground hover:text-foreground hover:bg-muted/50",
+                        loading && "opacity-50 cursor-not-allowed"
+                    )}
+                >
+                    <BarChart3 className="w-4 h-4" /> Übersicht
+                </button>
+                <button
+                    onClick={() => setActiveTab("settings")}
+                    disabled={loading}
+                    className={cn(
+                        "flex-1 md:flex-none px-4 py-2 rounded-md text-sm font-medium transition-all flex items-center gap-2 whitespace-nowrap",
+                        activeTab === "settings"
+                            ? "bg-primary text-primary-foreground shadow-sm"
+                            : "text-muted-foreground hover:text-foreground hover:bg-muted/50",
+                        loading && "opacity-50 cursor-not-allowed"
+                    )}
+                >
+                    <Settings2 className="w-4 h-4" /> Konfiguration
+                </button>
+            </div>
         </div>
       </div>
 
@@ -983,7 +975,7 @@ export default function TicketsPage() {
       ) : (
         <>
           {activeTab === "overview" && (
-        <div className="space-y-6 animate-in fade-in slide-in-from-top-2 duration-300 px-2 sm:px-0">
+        <div className="space-y-6 animate-in fade-in slide-in-from-top-2 duration-300 pb-2">
           
           {/* STATS ROW */}
           {/* FIX: grid-cols-2 für Handy, gap-2 für mehr Platz */}
@@ -1000,95 +992,144 @@ export default function TicketsPage() {
             /* HIER: Höhen angepasst für mehr Platz unten */
             <div className="grid grid-cols-1 xl:grid-cols-[380px_1fr] gap-6 h-auto xl:h-[calc(100vh-380px)] min-h-[400px]">
               
-              {/* LISTE (Kompakter: h-350px mobil) */}
-              <Card className="bg-card border-border flex flex-col overflow-hidden shadow-sm rounded-lg h-[350px] xl:h-auto">
-                <CardHeader className="bg-muted/30 border-b border-border py-3.5 px-4">
-                  <CardTitle className="text-foreground text-sm font-bold flex justify-between items-center">
-                    <span>Offene Tickets</span>
-                    <span className="bg-primary text-primary-foreground text-[10px] px-2 py-0.5 rounded-full">
-                      {openTickets.length}
-                    </span>
-                  </CardTitle>
-                </CardHeader>
+            {/* LISTE DER TICKETS (LINKE SPALTE) */}
+<Card className="!gap-0 !py-0 bg-card border-border flex flex-col overflow-hidden shadow-sm rounded-lg h-[350px] xl:h-auto border-none relative">
+  {/* Header: Wir erzwingen h-auto und m-0 */}
+  <div className="bg-muted/30 border-b border-border/50 px-4 py-5 flex items-center justify-between shrink-0 m-0 w-full">
+    <h3 className="text-foreground text-[11px] font-bold flex items-center gap-2 uppercase tracking-widest opacity-80 leading-none">
+      <History className="w-3.5 h-3.5 text-primary" /> Offene Tickets
+    </h3>
+    <span className="text-[10px] bg-muted px-2 py-0.5 rounded-full text-muted-foreground font-mono leading-none">
+      {openTickets.length}
+    </span>
+  </div>
 
-                <div className="flex-1 overflow-y-auto p-2 space-y-1">
-                  {openTickets.length === 0 && (
-                    <div className="flex flex-col items-center justify-center h-full text-muted-foreground gap-2">
-                      <CheckCircle2 className="w-8 h-8 opacity-20" />
-                      <p className="text-sm">Alles erledigt!</p>
-                    </div>
-                  )}
+  {/* Die Liste: Wir nutzen 'block' statt 'flex', um Grid-Lücken zu vermeiden */}
+  <div className="flex-1 overflow-y-auto custom-scrollbar block m-0 p-0">
+    {openTickets.length === 0 ? (
+      <div className="flex flex-col items-center justify-center h-full text-muted-foreground/50 gap-2 py-10">
+        <CheckCircle2 className="w-8 h-8 opacity-20" />
+        <p className="text-xs font-medium uppercase tracking-widest">Alles erledigt!</p>
+      </div>
+    ) : (
+      /* 'divide-y' sorgt für Trennlinien OHNE Abstände dazwischen */
+      <div className="divide-y divide-border/30 m-0 p-0 flex flex-col">
+        {openTickets.map((t) => {
+  // Falls dein Backend die ID und den Hash liefert:
+  const avatarUrl = t.userId && t.userAvatarHash 
+    ? `https://cdn.discordapp.com/avatars/${t.userId}/${t.userAvatarHash}.png`
+    : `https://cdn.discordapp.com/embed/avatars/${Math.floor(Math.random() * 6)}.png`; // Fallback
 
-                  {openTickets.map((t) => (
-                    <button
-                      key={t._id}
-                      onClick={() => onSelectTicket(t)}
-                      className={cn(
-                        "w-full text-left p-3 rounded-md border transition-all group",
-                        selectedTicketId === t._id
-                          ? "border-primary bg-primary/10"
-                          : "border-transparent bg-transparent hover:bg-muted/50 hover:border-border"
-                      )}
-                    >
-                      <div className="text-foreground font-medium truncate text-sm group-hover:text-primary transition-colors">
-                        {t.issue || "No Subject"}
-                      </div>
-                      <div className="text-xs text-muted-foreground mt-1 flex justify-between">
-                        <span>{t.userTag}</span>
-                        <span className="text-muted-foreground/70 font-mono text-[10px]">{new Date(t.createdAt).toLocaleDateString()}</span>
-                      </div>
-                    </button>
-                  ))}
-                </div>
-              </Card>
+  return (
+    <button
+      key={t._id}
+      onClick={() => onSelectTicket(t)}
+      className={cn(
+        "w-full text-left px-4 py-4 border-b border-border/30 transition-all group m-0 flex gap-3 items-center !gap-0 !py-5", 
+        selectedTicketId === t._id
+          ? "bg-primary/5 border-l-2 border-l-primary shadow-sm"
+          : "bg-transparent hover:bg-muted/30 border-l-2 border-l-transparent"
+      )}
+    >
+      {/* ECHTES PROFILBILD */}
+      <div className="shrink-0 mr-3">
+        <img 
+          src={avatarUrl} 
+          alt="" 
+          className="w-10 h-10 rounded-full object-cover border border-border/20"
+        />
+      </div>
 
-              {/* CHAT (Kompakter: h-450px mobil) */}
-              <Card className="bg-card border-border flex flex-col shadow-sm rounded-lg h-[450px] xl:h-auto">
-                {!selectedTicket ? (
-                  <div className="m-auto text-muted-foreground flex flex-col items-center gap-3">
-                    <div className="p-4 bg-muted rounded-full">
-                      <MessageSquare className="w-8 h-8 opacity-40" />
-                    </div>
-                    <p className="text-sm">Wähle ein Ticket aus, um den Verlauf zu sehen.</p>
-                  </div>
-                ) : (
-                  <>
-                    <div className="bg-muted/30 border-b border-border p-4 flex justify-between items-center shrink-0">
-                      <div className="font-bold text-foreground flex items-center gap-2">
-                        <Hash className="w-4 h-4 text-muted-foreground" /> {selectedTicket.issue}
-                      </div>
-                      <div className="flex gap-3 items-center">
-                          <div className="text-[10px] font-mono text-muted-foreground">
-                              {selectedTicket.userTag}
-                          </div>
-                          <div className="text-[10px] font-mono text-muted-foreground bg-muted px-2 py-1 rounded">
-                              ID: {selectedTicket.channelId}
-                          </div>
-                      </div>
-                    </div>
+      <div className="flex-1 min-w-0">
+        <div className="flex justify-between items-center mb-0.5">
+          <span className={cn(
+            "font-bold text-sm transition-colors leading-tight truncate",
+            selectedTicketId === t._id ? "text-primary" : "text-foreground"
+          )}>
+            {t.userTag || "Unbekannter User"}
+          </span>
+          <span className="text-[10px] text-muted-foreground font-mono opacity-60 shrink-0">
+            {new Date(t.createdAt).toLocaleDateString([], { day: '2-digit', month: '2-digit' })}
+          </span>
+        </div>
+        <div className="text-xs text-muted-foreground line-clamp-1 opacity-80">
+          {t.issue || "Keine Vorschau verfügbar"}
+        </div>
+      </div>
+    </button>
+  );
+})}
+      </div>
+    )}
+  </div>
+</Card>
 
-                    <div className="flex-1 overflow-hidden relative bg-muted/20">
-                      <div ref={chatScrollRef} className="absolute inset-0 overflow-y-auto p-4 space-y-4 custom-scrollbar">
+              {/* RECHTE SPALTE (CHAT) */}
+<Card className="!gap-0 !py-0 bg-card border-border flex flex-col shadow-sm rounded-lg h-[450px] xl:h-auto overflow-hidden relative">
+  {!selectedTicket ? (
+    <div className="m-auto text-muted-foreground flex flex-col items-center gap-3 py-20">
+      <div className="p-4 bg-muted rounded-full">
+        <MessageSquare className="w-8 h-8 opacity-40" />
+      </div>
+      <p className="text-sm">Wähle ein Ticket aus, um den Verlauf zu sehen.</p>
+    </div>
+  ) : (
+    <>
+      {/* --- CHAT HEADER: Jetzt mit py-2.5 für exakte Symmetrie zur linken Seite --- */}
+      <div className="bg-muted/30 border-b border-border/50 px-4 py-5 flex justify-between items-center shrink-0 min-h-[44px]">
+        <div className="flex items-center gap-2 min-w-0">
+          {/* Icon etwas kleiner für den modernen Look */}
+          <MessageSquare className="w-3.5 h-3.5 text-primary shrink-0" /> 
+          
+          <span className="font-bold text-sm text-foreground truncate max-w-[140px] sm:max-w-[280px] leading-tight">
+            {selectedTicket.issue}
+          </span>
+        </div>
+        
+        <div className="flex gap-2 items-center">
+          {/* Badges mit py-0.5 und leading-none für kompakte Optik innerhalb des Headers */}
+          <div className="hidden sm:block text-[10px] font-bold text-muted-foreground bg-muted/50 px-2 py-0.5 rounded border border-border/50 leading-none">
+            {selectedTicket.userTag}
+          </div>
+          <div className="text-[10px] font-mono text-primary bg-primary/5 px-2 py-0.5 rounded border border-primary/10 leading-none">
+            {selectedTicket.channelId}
+          </div>
+        </div>
+      </div>
+
+      {/* CHAT VERLAUF */}
+      <div className="flex-1 overflow-hidden relative bg-muted/20">
+        <div ref={chatScrollRef} className="absolute inset-0 overflow-y-auto p-4 space-y-4 custom-scrollbar">
                         {messages.length === 0 && !chatLoading && (
                             <div className="text-center text-muted-foreground text-xs mt-10">Keine Nachrichten vorhanden.</div>
                         )}
                         
-                        {messages.map((m, i) => (
-                          <div key={i} className="group flex gap-3 hover:bg-muted/30 p-2 rounded-lg -mx-2 transition-colors">
-                            <div className="w-9 h-9 rounded-full bg-primary flex items-center justify-center text-primary-foreground font-bold text-xs shrink-0 shadow-sm select-none">
-                              {m.authorTag?.charAt(0).toUpperCase()}
-                            </div>
-                            <div className="min-w-0 flex-1">
-                              <div className="flex items-baseline gap-2">
-                                <span className="font-bold text-foreground text-sm truncate">{m.authorTag}</span>
-                                <span className="text-[10px] text-muted-foreground font-mono">{new Date(m.timestamp).toLocaleString()}</span>
-                              </div>
-                              <div className="text-[14px] text-foreground/90 mt-1 whitespace-pre-wrap leading-relaxed break-words">
-                                <DiscordMarkdown text={m.content} />
-                              </div>
-                            </div>
-                          </div>
-                        ))}
+                        {messages.map((m, i) => {
+  const authorAvatarUrl = m.authorId && m.authorAvatarHash
+    ? `https://cdn.discordapp.com/avatars/${m.authorId}/${m.authorAvatarHash}.png`
+    : `https://cdn.discordapp.com/embed/avatars/0.png`;
+
+  return (
+    <div key={i} className="group flex gap-4 hover:bg-muted/10 p-2 rounded-lg -mx-2 transition-colors">
+      <img 
+        src={authorAvatarUrl} 
+        className="w-10 h-10 rounded-full shrink-0 border border-border/10" 
+        alt="" 
+      />
+      <div className="min-w-0 flex-1">
+        <div className="flex items-center gap-2 mb-1">
+          <span className="font-bold text-foreground text-[15px]">{m.authorTag}</span>
+          <span className="text-[11px] text-muted-foreground opacity-70">
+            {new Date(m.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+          </span>
+        </div>
+        <div className="text-[15px] text-foreground/90 whitespace-pre-wrap leading-relaxed">
+          <DiscordMarkdown text={m.content} />
+        </div>
+      </div>
+    </div>
+  );
+})}
                         {chatLoading && (
                             <div className="text-center text-muted-foreground text-xs animate-pulse py-4">Lade Verlauf...</div>
                         )}
