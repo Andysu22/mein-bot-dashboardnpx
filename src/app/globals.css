@@ -1,7 +1,6 @@
 @import "tailwindcss";
 
 @theme {
-  /* Wir sagen Tailwind, welche Variablen es nutzen soll */
   --color-background: hsl(var(--background));
   --color-foreground: hsl(var(--foreground));
   --color-card: hsl(var(--card));
@@ -26,146 +25,119 @@
   --radius-sm: calc(var(--radius) - 4px);
 }
 
-/* --- LIGHT MODE (STANDARD) --- */
+/* --- LIGHT MODE (MODERN CLEAN) --- */
 :root {
-  --background: 210 40% 98%; 
-  --foreground: 222 47% 11%;
+  /* Ein sehr helles, frisches Grau für den Hintergrund */
+  --background: 220 15% 97%; 
+  --foreground: 224 47% 12%;
 
+  /* Karten sind reinweiß für maximalen Fokus */
   --card: 0 0% 100%;
-  --card-foreground: 222 47% 11%;
+  --card-foreground: 224 47% 12%;
 
   --popover: 0 0% 100%;
-  --popover-foreground: 222 47% 11%;
+  --popover-foreground: 224 47% 12%;
 
-  /* Diese Farbe wird später durch layout.js style="..." überschrieben */
   --primary: 235 86% 65%;
   --primary-foreground: 0 0% 100%;
 
-  --secondary: 210 40% 96.1%;
-  --secondary-foreground: 222 47% 11%;
+  --secondary: 220 15% 94%;
+  --secondary-foreground: 224 47% 12%;
 
-  --muted: 210 40% 96.1%;
-  --muted-foreground: 215 16% 47%;
+  --muted: 220 15% 94%;
+  --muted-foreground: 220 10% 45%;
 
-  --accent: 210 40% 96.1%;
-  --accent-foreground: 222 47% 11%;
+  --accent: 220 15% 94%;
+  --accent-foreground: 224 47% 12%;
 
-  --destructive: 0 84.2% 60.2%;
-  --destructive-foreground: 210 40% 98%;
+  --destructive: 0 84% 60%;
+  --destructive-foreground: 0 0% 100%;
 
-  --border: 214 32% 91%;
-  --input: 214 32% 91%;
+  /* Sehr feine, helle Border-Farbe */
+  --border: 220 13% 91%;
+  --input: 220 13% 91%;
   --ring: 235 86% 65%;
 
-  --radius: 0.5rem;
+  --radius: 0.75rem;
 }
 
-/* --- DARK MODE --- */
+/* --- DARK MODE (Discord Style) --- */
 .dark {
-  --background: 225 7% 11%;
+  --background: 225 7% 10%;
   --foreground: 210 10% 90%;
-
-  --card: 225 7% 14%;
+  --card: 225 7% 13%;
   --card-foreground: 210 10% 90%;
-
-  --popover: 225 7% 14%;
+  --popover: 225 7% 13%;
   --popover-foreground: 210 10% 90%;
-
-  /* Auch hier überschreibt layout.js die Primary Farbe dynamisch */
   --primary: 235 86% 65%;
   --primary-foreground: 0 0% 100%;
-
-  --secondary: 217 19% 27%;
+  --secondary: 225 7% 18%;
   --secondary-foreground: 210 40% 98%;
-
-  --muted: 225 7% 18%;
-  --muted-foreground: 215 8% 65%;
-
-  --accent: 225 7% 18%;
+  --muted: 225 7% 16%;
+  --muted-foreground: 215 8% 60%;
+  --accent: 225 7% 16%;
   --accent-foreground: 210 40% 98%;
-
-  --destructive: 0 62.8% 30.6%;
+  --destructive: 0 62% 30%;
   --destructive-foreground: 210 40% 98%;
-
-  --border: 225 7% 18%;
-  --input: 225 7% 18%;
+  --border: 225 7% 16%;
+  --input: 225 7% 16%;
   --ring: 235 86% 65%;
 }
 
-/* Globale Styles */
+/* --- GLOBAL RESETS --- */
 html, body {
   background-color: hsl(var(--background));
   color: hsl(var(--foreground));
   min-height: 100%;
-  
 }
 
-/* --- Discord Markdown Styles --- */
-.discord-md { width: 100%; }
-.discord-md__p { margin: 0; line-height: 1.375rem; }
-.discord-md__spacer { height: .35rem; }
+/* --- SIDEBAR & NAVBAR OPTIMIERUNG --- */
 
-.discord-md__h1, .discord-md__h2, .discord-md__h3 {
-  font-weight: 700;
-  color: hsl(var(--foreground));
-  margin: .2rem 0;
+/* Entfernt alle Schatten im gesamten Projekt */
+* {
+  box-shadow: none !important;
 }
-.discord-md__h1 { font-size: 1.15rem; }
-.discord-md__h2 { font-size: 1.05rem; }
-.discord-md__h3 { font-size: .98rem; }
 
+/* Navbar (Header) Fix */
+header {
+  background-color: hsl(var(--card));
+  border-bottom: 1px solid hsl(var(--border));
+  backdrop-filter: blur(8px);
+}
+
+/* Sidebar Fix */
+aside {
+  background-color: hsl(var(--card));
+  border-right: 1px solid hsl(var(--border));
+}
+
+/* Card Styling */
+.card, [class*="bg-card"] {
+  border: 1px solid hsl(var(--border));
+  background-color: hsl(var(--card));
+}
+
+/* Ticket Liste Divider */
+.divide-y > * + * {
+  border-color: hsl(var(--border)) !important;
+  opacity: 0.5;
+}
+
+/* --- Discord Markdown --- */
 .discord-md__inlinecode {
   background: hsl(var(--muted));
-  color: hsl(var(--foreground));
   padding: 2px 4px;
-  border-radius: 3px;
-  font-family: "Consolas", "Monaco", "Andale Mono", "Ubuntu Mono", monospace;
-  font-size: 0.85em;
-  border: 1px solid hsl(var(--border));
+  border-radius: 4px;
+  font-family: monospace;
 }
 
 .discord-md__codeblock {
-  background: hsl(var(--muted)) !important; 
-  color: hsl(var(--foreground)) !important;
+  background: #f1f2f5 !important;
   border: 1px solid hsl(var(--border));
-  border-radius: 4px;
-  padding: 8px;
-  font-family: "Consolas", "Monaco", "Andale Mono", "Ubuntu Mono", monospace;
-  font-size: 0.85rem;
-  white-space: pre-wrap;
-  margin: 6px 0;
-  display: block;
-  overflow-x: auto;
+  border-radius: 8px;
+  padding: 12px;
 }
 
-.discord-md__codeblock * {
-  background-color: transparent !important;
-  color: inherit !important;
-  font-family: inherit !important;
-}
-
-.discord-md__link {
-  color: hsl(var(--primary)); 
-  text-decoration: none;
-}
-.discord-md__link:hover { text-decoration: underline; }
-
-.embed-field-value {
-  font-size: 14px;
-  line-height: 1.375rem;
-  color: hsl(var(--foreground)); 
-}
-
-.embed-field-value--large { margin-top: 2px; }
-
-.discord-md__subtext {
-  font-size: 0.75rem;
-  color: hsl(var(--muted-foreground));
-  margin-top: -4px;
-}
-.discord-md__quote {
-  border-left: 4px solid hsl(var(--border));
-  padding-left: 8px;
-  color: hsl(var(--muted-foreground));
-  font-size: 0.9em;
+.dark .discord-md__codeblock {
+  background: #1e1f22 !important;
 }

@@ -10,6 +10,32 @@ import {
 import { Button } from "@/components/ui/button";
 import { openLoginPopup } from "@/lib/loginPopup";
 
+// --- ÜBERSETZUNGEN ---
+const settingsI18n = {
+  de: {
+    title: "Einstellungen",
+    desc: "Passe dein Erlebnis an.",
+    language: "Sprache",
+    theme: "Design",
+    color: "Akzentfarbe",
+    session: "Sitzung",
+    dashboard: "Dashboard",
+    logout: "Abmelden",
+    done: "Fertig"
+  },
+  en: {
+    title: "Settings",
+    desc: "Customize your experience.",
+    language: "Language",
+    theme: "Theme",
+    color: "Accent Color",
+    session: "Session",
+    dashboard: "Dashboard",
+    logout: "Logout",
+    done: "Done"
+  }
+};
+
 function cn(...classes) {
   return classes.filter(Boolean).join(" ");
 }
@@ -47,6 +73,9 @@ export default function Navbar() {
   const [activeColor, setActiveColor] = useState("#5865F2"); 
   const [saving, setSaving] = useState(false);
 
+  // Texte basierend auf Sprache laden
+  const t = settingsI18n[activeLang] || settingsI18n.de;
+
   const colors = ["#5865F2", "#EB459E", "#FEE75C", "#57F287", "#ED4245"];
 
   const updateGlobalStyle = (hsl) => {
@@ -64,18 +93,13 @@ export default function Navbar() {
   };
 
   useEffect(() => {
-    // 1. Initial LocalStorage Check
     const savedHsl = localStorage.getItem("accent-hsl");
-    if (savedHsl) {
-        updateGlobalStyle(savedHsl);
-    }
+    if (savedHsl) updateGlobalStyle(savedHsl);
 
-    // 2. DB Sync (Hier fehlte die Logik für das Theme!)
     if (session?.user) {
       fetch("/api/user/settings")
         .then(res => res.json())
         .then(data => {
-          // A) Akzentfarbe Sync (das hattest du schon)
           if (data.accentColor) {
              setActiveColor(data.accentColor);
              const hsl = hexToHsl(data.accentColor);
@@ -84,24 +108,21 @@ export default function Navbar() {
                 updateGlobalStyle(hsl);
              }
           }
-
-          // B) THEME SYNC (NEU: Das hier hat gefehlt!)
           if (data.theme) {
-            // Wir prüfen, ob das lokale Theme vom DB Theme abweicht
-            // 'theme' kommt aus next-themes Hook
             const localTheme = localStorage.getItem("theme"); 
-            
             if (localTheme !== data.theme) {
-               // Wir zwingen next-themes, den Wert aus der DB zu nehmen
                setTheme(data.theme); 
-               // Wir updaten den LocalStorage für das Blocking Script im Layout
                localStorage.setItem("theme", data.theme);
             }
+          }
+          // Sprache aus DB laden
+          if (data.ticketLanguage) {
+              setActiveLang(data.ticketLanguage);
           }
         })
         .catch(() => {});
     }
-  }, [session, setTheme]); // setTheme als dependency hinzugefügt
+  }, [session, setTheme]);
 
   const handleColorChange = async (colorHex) => {
     setActiveColor(colorHex);
@@ -124,15 +145,28 @@ export default function Navbar() {
 
   const handleThemeChange = (newTheme) => {
     setTheme(newTheme);
-    // Sofort auch LocalStorage updaten, damit Blocking Script bescheid weiß
     localStorage.setItem("theme", newTheme);
-    
     if (session?.user) {
         fetch("/api/user/settings", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ theme: newTheme })
         }).catch(() => {});
+    }
+  };
+
+  const handleLangChange = async (newLang) => {
+    setActiveLang(newLang);
+    if (session?.user) {
+        setSaving(true);
+        try {
+            await fetch("/api/user/settings", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ ticketLanguage: newLang })
+            });
+        } catch (e) { console.error(e); }
+        finally { setSaving(false); }
     }
   };
 
@@ -180,14 +214,14 @@ export default function Navbar() {
                 {isOpen && (
                   <div className="absolute right-0 mt-3 w-60 rounded-2xl bg-card/95 backdrop-blur-2xl border border-border shadow-2xl py-2 animate-in fade-in zoom-in-95 duration-200 z-50">
                     <div className="px-4 py-3 border-b border-border mb-1">
-                      <p className="text-[10px] text-primary font-bold uppercase tracking-widest mb-0.5">Sitzung</p>
+                      <p className="text-[10px] text-primary font-bold uppercase tracking-widest mb-0.5">{t.session}</p>
                       <p className="text-sm font-bold text-foreground truncate">{session.user.name || "User"}</p>
                     </div>
                     
                     <div className="p-1.5 space-y-1">
                       <Link href="/dashboard" onClick={() => setIsOpen(false)}>
                           <div className="px-3 py-2 text-sm text-muted-foreground hover:bg-primary hover:text-white cursor-pointer flex items-center gap-3 transition-all rounded-xl font-medium">
-                            <LayoutDashboard className="w-4 h-4" /> Dashboard
+                            <LayoutDashboard className="w-4 h-4" /> {t.dashboard}
                           </div>
                       </Link>
 
@@ -195,14 +229,14 @@ export default function Navbar() {
                           onClick={() => { setIsOpen(false); setShowSettings(true); }}
                           className="w-full text-left px-3 py-2 text-sm text-muted-foreground hover:bg-primary hover:text-white cursor-pointer flex items-center gap-3 transition-all rounded-xl font-medium"
                       >
-                          <Settings className="w-4 h-4" /> Einstellungen
+                          <Settings className="w-4 h-4" /> {t.title}
                       </button>
 
                       <button 
                           onClick={() => signOut({ callbackUrl: "/" })}
                           className="w-full text-left px-3 py-2 text-sm text-red-400 hover:bg-red-500/10 cursor-pointer flex items-center gap-3 transition-all rounded-xl font-medium"
                       >
-                          <LogOut className="w-4 h-4" /> Abmelden
+                          <LogOut className="w-4 h-4" /> {t.logout}
                       </button>
                     </div>
                   </div>
@@ -232,8 +266,8 @@ export default function Navbar() {
             
             <div className="flex items-center justify-between px-6 py-5 border-b border-border bg-muted/50">
               <div>
-                <h2 className="text-xl font-bold text-foreground">Einstellungen</h2>
-                <p className="text-xs text-muted-foreground mt-0.5">Passe dein Erlebnis an.</p>
+                <h2 className="text-xl font-bold text-foreground">{t.title}</h2>
+                <p className="text-xs text-muted-foreground mt-0.5">{t.desc}</p>
               </div>
               <button 
                 onClick={() => setShowSettings(false)}
@@ -248,13 +282,13 @@ export default function Navbar() {
               {/* Sprache */}
               <div className="space-y-3">
                 <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
-                  <Globe className="w-3.5 h-3.5" /> Sprache
+                  <Globe className="w-3.5 h-3.5" /> {t.language}
                 </label>
                 <div className="grid grid-cols-2 gap-3">
-                  <button onClick={() => setActiveLang("de")} className={cn("px-4 py-3 rounded-xl border text-sm font-medium flex items-center justify-between transition-all", activeLang === "de" ? "bg-primary/10 border-primary text-foreground" : "bg-card border-transparent hover:border-border text-muted-foreground")}>
+                  <button onClick={() => handleLangChange("de")} className={cn("px-4 py-3 rounded-xl border text-sm font-medium flex items-center justify-between transition-all", activeLang === "de" ? "bg-primary/10 border-primary text-foreground" : "bg-card border-transparent hover:border-border text-muted-foreground")}>
                     <span>Deutsch</span> {activeLang === "de" && <Check className="w-4 h-4 text-primary" />}
                   </button>
-                  <button onClick={() => setActiveLang("en")} className={cn("px-4 py-3 rounded-xl border text-sm font-medium flex items-center justify-between transition-all", activeLang === "en" ? "bg-primary/10 border-primary text-foreground" : "bg-card border-transparent hover:border-border text-muted-foreground")}>
+                  <button onClick={() => handleLangChange("en")} className={cn("px-4 py-3 rounded-xl border text-sm font-medium flex items-center justify-between transition-all", activeLang === "en" ? "bg-primary/10 border-primary text-foreground" : "bg-card border-transparent hover:border-border text-muted-foreground")}>
                     <span>English</span> {activeLang === "en" && <Check className="w-4 h-4 text-primary" />}
                   </button>
                 </div>
@@ -263,7 +297,7 @@ export default function Navbar() {
               {/* Design */}
               <div className="space-y-3">
                 <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
-                  <Monitor className="w-3.5 h-3.5" /> Design
+                  <Monitor className="w-3.5 h-3.5" /> {t.theme}
                 </label>
                 <div className="flex bg-muted p-1 rounded-lg border border-border">
                   <button 
@@ -284,7 +318,7 @@ export default function Navbar() {
               {/* Akzentfarbe */}
               <div className="space-y-3">
                 <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
-                  <Palette className="w-3.5 h-3.5" /> Akzentfarbe
+                  <Palette className="w-3.5 h-3.5" /> {t.color}
                 </label>
                 <div className="flex gap-4">
                   {colors.map((color) => (
@@ -305,7 +339,7 @@ export default function Navbar() {
             </div>
 
             <div className="p-4 bg-muted/50 border-t border-border flex justify-end gap-3">
-              <button onClick={() => setShowSettings(false)} className="px-6 py-2 bg-primary hover:bg-primary/90 text-primary-foreground text-sm font-bold rounded-md transition-colors shadow-lg shadow-primary/20">Fertig</button>
+              <button onClick={() => setShowSettings(false)} className="px-6 py-2 bg-primary hover:bg-primary/90 text-primary-foreground text-sm font-bold rounded-md transition-colors shadow-lg shadow-primary/20">{t.done}</button>
             </div>
           </div>
         </div>

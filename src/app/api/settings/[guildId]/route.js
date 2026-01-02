@@ -45,7 +45,7 @@ const settingsSchema = z.object({
   logChannelId: z.string().nullable().optional(),
   supportRoleId: z.string().nullable().optional(),
   ticketCategoryId: z.string().nullable().optional(),
-  ticketLanguage: z.string().optional(),
+  ticketLanguage: z.string().optional(), // ✅ Hier wird die Sprache validiert
   panelChannelId: z.string().nullable().optional(),
   botNickname: z.string().nullable().optional(),
   panelEmbed: embedSchema.optional().nullable(),
@@ -61,13 +61,10 @@ const settingsSchema = z.object({
   appStaffRoleId: z.string().nullable().optional(),
   applicantRoleId: z.string().nullable().optional(),
   appDeclineCooldownDays: z.number().optional(),
-
   appPanelEmbed: embedSchema.optional().nullable(),
   appPanelButtonText: z.string().max(80).optional(),
   appPanelButtonStyle: z.string().optional(),
   applicationForm: formSchema,
-
-  // ✅ NEU: Review Embed speichern/validieren
   appReviewEmbed: embedSchema.optional().nullable(),
 
   // Response Settings
@@ -76,22 +73,16 @@ const settingsSchema = z.object({
     content: z.string().max(2000).optional(),
     embed: embedSchema.optional().nullable(),
   }).optional(),
-
 }).passthrough();
 
 async function checkAdmin(accessToken, userId, guildId) {
   if (!guildId || !userId) return false;
-
   const cacheKey = `${userId}-${guildId}`;
   const cached = adminCache.get(cacheKey);
   const now = Date.now();
-
-  if (cached && (now - cached.timestamp < CACHE_TTL)) {
-    return cached.isAdmin;
-  }
+  if (cached && (now - cached.timestamp < CACHE_TTL)) return cached.isAdmin;
 
   let isAdmin = false;
-
   try {
     const botToken = process.env.DISCORD_TOKEN;
     if (botToken) {
@@ -101,12 +92,9 @@ async function checkAdmin(accessToken, userId, guildId) {
       });
       if (gRes.ok) {
         const g = await gRes.json();
-        if (g?.owner_id && String(g.owner_id) === String(userId)) {
-          isAdmin = true;
-        }
+        if (g?.owner_id && String(g.owner_id) === String(userId)) isAdmin = true;
       }
     }
-
     if (!isAdmin && accessToken) {
       const res = await fetch("https://discord.com/api/v10/users/@me/guilds", {
         headers: { Authorization: `Bearer ${accessToken}` }
@@ -117,9 +105,7 @@ async function checkAdmin(accessToken, userId, guildId) {
         if (guild) {
           let p;
           try { p = BigInt(guild.permissions); } catch { p = BigInt(0); }
-          if ((p & BigInt(0x8)) === BigInt(0x8) || (p & BigInt(0x20)) === BigInt(0x20)) {
-            isAdmin = true;
-          }
+          if ((p & BigInt(0x8)) === BigInt(0x8) || (p & BigInt(0x20)) === BigInt(0x20)) isAdmin = true;
         }
       }
     }
@@ -127,17 +113,13 @@ async function checkAdmin(accessToken, userId, guildId) {
     console.error("Admin Check Error:", err);
     isAdmin = false;
   }
-
   adminCache.set(cacheKey, { isAdmin, timestamp: now });
   return isAdmin;
 }
 
 export async function GET(req, { params }) {
-  if (checkRateLimit(req)) return NextResponse.json({ error: "Too many requests" }, { status: 429 });
-
   const { guildId } = await params;
   const session = await getServerSession(authOptions);
-
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const isAdmin = await checkAdmin(session.accessToken, session.user?.id, guildId);
@@ -149,11 +131,8 @@ export async function GET(req, { params }) {
 }
 
 export async function POST(req, { params }) {
-  if (checkRateLimit(req)) return NextResponse.json({ error: "Rate limit" }, { status: 429 });
-
   const { guildId } = await params;
   const session = await getServerSession(authOptions);
-
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const isAdmin = await checkAdmin(session.accessToken, session.user?.id, guildId);
@@ -162,6 +141,8 @@ export async function POST(req, { params }) {
   try {
     const body = await req.json();
     const validatedData = settingsSchema.parse(body);
+    
+    // Verhindere das Überschreiben der ID
     delete validatedData._id;
 
     await connectDB();

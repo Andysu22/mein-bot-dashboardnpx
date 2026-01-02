@@ -1,0 +1,31 @@
+{
+  "common": {
+    "loading": "Lade...",
+    "loading_data": "Lade Daten...",
+    "refresh": "Aktualisieren"
+  },
+  "sidebar": {
+    "overview": "Übersicht",
+    "tickets": "Ticket System",
+    "voice": "Voice Hubs",
+    "apps": "Bewerbungen",
+    "modal": "Modal Builder",
+    "commands": "Custom Commands",
+    "security": "Sicherheit",
+    "moderation": "Moderation",
+    "no_guilds": "Keine weiteren Server",
+    "add_server": "Neuen Server hinzufügen"
+  },
+  "selector": {
+    "back": "Zurück zur Startseite",
+    "your": "Deine",
+    "communities": "Communitys",
+    "active": "Aktive Server",
+    "available": "Verfügbare Server"
+  },
+  "notFound": {
+    "title": "Seite nicht gefunden",
+    "desc": "Ups! Die Seite existiert gar nicht.",
+    "back": "Zurück zum Dashboard"
+  }
+}

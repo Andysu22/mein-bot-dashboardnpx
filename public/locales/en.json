@@ -1,0 +1,32 @@
+{
+  "common": {
+    "loading": "Loading...",
+    "loading_data": "Loading server data...",
+    "refresh": "Refresh"
+  },
+  "sidebar": {
+    "overview": "Overview",
+    "tickets": "Ticket System",
+    "voice": "Voice Hubs",
+    "apps": "Applications",
+    "modal": "Modal Builder",
+    "commands": "Custom Commands",
+    "security": "Security",
+    "moderation": "Moderation",
+    "no_guilds": "No other active servers",
+    "add_server": "Add new server"
+  },
+  "selector": {
+    "back": "Back to Home",
+    "your": "Your",
+    "communities": "Communities",
+    "active": "Active Servers",
+    "available": "Available Servers",
+    "no_admin": "No administrator servers found"
+  },
+  "notFound": {
+    "title": "Page not found",
+    "desc": "Oops! The page you are looking for has been lost in cyberspace or does not exist.",
+    "back": "Back to Dashboard"
+  }
+}

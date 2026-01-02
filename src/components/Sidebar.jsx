@@ -115,6 +115,7 @@ export default function Sidebar({ guildId, guildName, guildIcon }) {
               <div className="flex items-center gap-3 overflow-hidden text-left">
                 <div className="w-8 h-8 rounded-lg bg-primary flex-shrink-0 flex items-center justify-center font-bold text-xs text-primary-foreground overflow-hidden shadow-sm"
                 suppressHydrationWarning={true}>
+
                   {guildIcon ? (
                     <img src={guildIcon} className="h-full w-full object-cover" alt="" />
                   ) : (

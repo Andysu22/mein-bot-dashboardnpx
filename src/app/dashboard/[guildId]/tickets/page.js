@@ -810,10 +810,18 @@ export default function TicketsPage() {
   }
 
   async function onSelectTicket(t) {
-    setSelectedTicket(t);
+  // Wenn das Ticket bereits ausgewählt ist -> Toggle OFF (schließen)
+  if (selectedTicketId === t._id) {
+    setSelectedTicket(null);
     setMessages([]);
-    await fetchMessages(t._id);
+    return;
   }
+  
+  // Ansonsten -> Neu auswählen und laden
+  setSelectedTicket(t);
+  setMessages([]);
+  await fetchMessages(t._id);
+}
 
   async function handleSave() {
     setSaving(true);
@@ -992,9 +1000,8 @@ export default function TicketsPage() {
             /* HIER: Höhen angepasst für mehr Platz unten */
             <div className="grid grid-cols-1 xl:grid-cols-[380px_1fr] gap-6 h-auto xl:h-[calc(100vh-380px)] min-h-[400px]">
               
-            {/* LISTE DER TICKETS (LINKE SPALTE) */}
+            {/* LINKER BEREICH: TICKET LISTE */}
 <Card className="!gap-0 !py-0 bg-card border-border flex flex-col overflow-hidden shadow-sm rounded-lg h-[350px] xl:h-auto border-none relative">
-  {/* Header: Wir erzwingen h-auto und m-0 */}
   <div className="bg-muted/30 border-b border-border/50 px-4 py-5 flex items-center justify-between shrink-0 m-0 w-full">
     <h3 className="text-foreground text-[11px] font-bold flex items-center gap-2 uppercase tracking-widest opacity-80 leading-none">
       <History className="w-3.5 h-3.5 text-primary" /> Offene Tickets
@@ -1004,7 +1011,6 @@ export default function TicketsPage() {
     </span>
   </div>
 
-  {/* Die Liste: Wir nutzen 'block' statt 'flex', um Grid-Lücken zu vermeiden */}
   <div className="flex-1 overflow-y-auto custom-scrollbar block m-0 p-0">
     {openTickets.length === 0 ? (
       <div className="flex flex-col items-center justify-center h-full text-muted-foreground/50 gap-2 py-10">
@@ -1012,60 +1018,51 @@ export default function TicketsPage() {
         <p className="text-xs font-medium uppercase tracking-widest">Alles erledigt!</p>
       </div>
     ) : (
-      /* 'divide-y' sorgt für Trennlinien OHNE Abstände dazwischen */
       <div className="divide-y divide-border/30 m-0 p-0 flex flex-col">
-        {openTickets.map((t) => {
-  // Falls dein Backend die ID und den Hash liefert:
-  const avatarUrl = t.userId && t.userAvatarHash 
-    ? `https://cdn.discordapp.com/avatars/${t.userId}/${t.userAvatarHash}.png`
-    : `https://cdn.discordapp.com/embed/avatars/${Math.floor(Math.random() * 6)}.png`; // Fallback
+        {openTickets.map((t) => (
+          <button
+            key={t._id}
+            onClick={() => onSelectTicket(t)}
+            className={cn(
+              "w-full text-left px-4 py-5 transition-all group m-0 flex gap-4 items-center", 
+              selectedTicketId === t._id
+                ? "bg-primary/5 border-l-2 border-l-primary shadow-sm"
+                : "bg-transparent hover:bg-muted/30 border-l-2 border-l-transparent"
+            )}
+          >
+            <div className="shrink-0">
+              <img 
+                src={t.userAvatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(t.userTag || "U")}&background=333&color=fff`} 
+                alt="" 
+                className="w-10 h-10 rounded-full object-cover border border-border/50 bg-background"
+              />
+            </div>
 
-  return (
-    <button
-      key={t._id}
-      onClick={() => onSelectTicket(t)}
-      className={cn(
-        "w-full text-left px-4 py-4 border-b border-border/30 transition-all group m-0 flex gap-3 items-center !gap-0 !py-5", 
-        selectedTicketId === t._id
-          ? "bg-primary/5 border-l-2 border-l-primary shadow-sm"
-          : "bg-transparent hover:bg-muted/30 border-l-2 border-l-transparent"
-      )}
-    >
-      {/* ECHTES PROFILBILD */}
-      <div className="shrink-0 mr-3">
-        <img 
-          src={avatarUrl} 
-          alt="" 
-          className="w-10 h-10 rounded-full object-cover border border-border/20"
-        />
-      </div>
-
-      <div className="flex-1 min-w-0">
-        <div className="flex justify-between items-center mb-0.5">
-          <span className={cn(
-            "font-bold text-sm transition-colors leading-tight truncate",
-            selectedTicketId === t._id ? "text-primary" : "text-foreground"
-          )}>
-            {t.userTag || "Unbekannter User"}
-          </span>
-          <span className="text-[10px] text-muted-foreground font-mono opacity-60 shrink-0">
-            {new Date(t.createdAt).toLocaleDateString([], { day: '2-digit', month: '2-digit' })}
-          </span>
-        </div>
-        <div className="text-xs text-muted-foreground line-clamp-1 opacity-80">
-          {t.issue || "Keine Vorschau verfügbar"}
-        </div>
-      </div>
-    </button>
-  );
-})}
+            <div className="flex-1 min-w-0">
+              <div className="flex justify-between items-start mb-0.5">
+                <span className={cn(
+                  "font-bold text-[14px] transition-colors leading-tight truncate",
+                  selectedTicketId === t._id ? "text-primary" : "text-foreground"
+                )}>
+                  {t.userTag || "Unbekannter User"}
+                </span>
+                <span className="text-[10px] text-muted-foreground font-mono opacity-60">
+                  {new Date(t.createdAt).toLocaleDateString([], { day: '2-digit', month: '2-digit' })}
+                </span>
+              </div>
+              <div className="text-xs text-muted-foreground line-clamp-1 opacity-80 group-hover:opacity-100">
+                {t.issue || "Keine Nachrichtenvorschau..."}
+              </div>
+            </div>
+          </button>
+        ))}
       </div>
     )}
   </div>
 </Card>
 
-              {/* RECHTE SPALTE (CHAT) */}
-<Card className="!gap-0 !py-0 bg-card border-border flex flex-col shadow-sm rounded-lg h-[450px] xl:h-auto overflow-hidden relative">
+{/* RECHTE SPALTE (CHAT) */}
+<Card className="!gap-0 !py-0 bg-card border-border flex flex-col shadow-sm rounded-lg h-[450px] xl:h-auto overflow-hidden relative border-none">
   {!selectedTicket ? (
     <div className="m-auto text-muted-foreground flex flex-col items-center gap-3 py-20">
       <div className="p-4 bg-muted rounded-full">
@@ -1075,69 +1072,113 @@ export default function TicketsPage() {
     </div>
   ) : (
     <>
-      {/* --- CHAT HEADER: Jetzt mit py-2.5 für exakte Symmetrie zur linken Seite --- */}
-      <div className="bg-muted/30 border-b border-border/50 px-4 py-5 flex justify-between items-center shrink-0 min-h-[44px]">
-        <div className="flex items-center gap-2 min-w-0">
-          {/* Icon etwas kleiner für den modernen Look */}
-          <MessageSquare className="w-3.5 h-3.5 text-primary shrink-0" /> 
-          
-          <span className="font-bold text-sm text-foreground truncate max-w-[140px] sm:max-w-[280px] leading-tight">
-            {selectedTicket.issue}
-          </span>
+      {/* CHAT HEADER */}
+      <div className="bg-muted/30 border-b border-border/50 px-4 py-3 flex justify-between items-center shrink-0 min-h-[56px] m-0 w-full">
+        {/* LINKS: User Info */}
+        <div className="flex flex-col min-w-0">
+          <div className="flex items-center gap-2">
+            <MessageSquare className="w-3.5 h-3.5 text-primary shrink-0" /> 
+            <span className="font-bold text-sm text-foreground truncate leading-tight">
+              {selectedTicket.userTag || "Ticket Chat"}
+            </span>
+          </div>
         </div>
         
-        <div className="flex gap-2 items-center">
-          {/* Badges mit py-0.5 und leading-none für kompakte Optik innerhalb des Headers */}
-          <div className="hidden sm:block text-[10px] font-bold text-muted-foreground bg-muted/50 px-2 py-0.5 rounded border border-border/50 leading-none">
-            {selectedTicket.userTag}
-          </div>
-          <div className="text-[10px] font-mono text-primary bg-primary/5 px-2 py-0.5 rounded border border-primary/10 leading-none">
-            {selectedTicket.channelId}
+        {/* RECHTS: Actions (Refresh + Status) */}
+        <div className="flex gap-3 items-center shrink-0 ml-4">
+          {/* REFRESH BUTTON */}
+          <button 
+            onClick={() => fetchMessages(selectedTicket._id)}
+            disabled={chatLoading}
+            className="p-1.5 hover:bg-muted rounded-md text-muted-foreground hover:text-foreground transition-colors disabled:opacity-50"
+            title="Chat aktualisieren"
+          >
+            <RefreshCw className={cn("w-3.5 h-3.5", chatLoading && "animate-spin")} />
+          </button>
+
+          {/* STATUS BADGE */}
+          <div className="text-[10px] font-mono text-primary bg-primary/5 px-2 py-0.5 rounded border border-primary/10 leading-none uppercase tracking-widest font-bold">
+            {selectedTicket.status}
           </div>
         </div>
       </div>
 
-      {/* CHAT VERLAUF */}
       <div className="flex-1 overflow-hidden relative bg-muted/20">
         <div ref={chatScrollRef} className="absolute inset-0 overflow-y-auto p-4 space-y-4 custom-scrollbar">
-                        {messages.length === 0 && !chatLoading && (
-                            <div className="text-center text-muted-foreground text-xs mt-10">Keine Nachrichten vorhanden.</div>
-                        )}
-                        
-                        {messages.map((m, i) => {
-  const authorAvatarUrl = m.authorId && m.authorAvatarHash
-    ? `https://cdn.discordapp.com/avatars/${m.authorId}/${m.authorAvatarHash}.png`
-    : `https://cdn.discordapp.com/embed/avatars/0.png`;
+          
+          {/* INITIALES ANLIEGEN */}
+          {selectedTicket.issue && (
+            <div className="group flex gap-4 p-3 rounded-lg -mx-2 bg-primary/5 border border-primary/10 mb-6 shadow-sm">
+              <img 
+                src={selectedTicket.userAvatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(selectedTicket.userTag || "U")}&background=5865F2&color=fff`} 
+                className="w-10 h-10 rounded-full shrink-0 border border-primary/20 bg-background" 
+                alt="" 
+              />
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="font-bold text-[15px] text-primary">
+                    {selectedTicket.userTag || "User"} 
+                  </span>
+                  <span className="text-[11px] text-muted-foreground opacity-70">
+                    {new Date(selectedTicket.createdAt).toLocaleDateString()}
+                  </span>
+                </div>
+                <div className="text-[15px] text-foreground font-medium leading-relaxed">
+                  {selectedTicket.issue}
+                </div>
+              </div>
+            </div>
+          )}
 
-  return (
-    <div key={i} className="group flex gap-4 hover:bg-muted/10 p-2 rounded-lg -mx-2 transition-colors">
-      <img 
-        src={authorAvatarUrl} 
-        className="w-10 h-10 rounded-full shrink-0 border border-border/10" 
-        alt="" 
-      />
-      <div className="min-w-0 flex-1">
-        <div className="flex items-center gap-2 mb-1">
-          <span className="font-bold text-foreground text-[15px]">{m.authorTag}</span>
-          <span className="text-[11px] text-muted-foreground opacity-70">
-            {new Date(m.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-          </span>
-        </div>
-        <div className="text-[15px] text-foreground/90 whitespace-pre-wrap leading-relaxed">
-          <DiscordMarkdown text={m.content} />
+          {/* CHAT NACHRICHTEN */}
+          {messages.map((m, i) => {
+            const avatarUrl = m.author?.avatar 
+              ? `https://cdn.discordapp.com/avatars/${m.author.id}/${m.author.avatar}.png`
+              : `https://cdn.discordapp.com/embed/avatars/${(m.author?.discriminator || 0) % 5}.png`;
+
+            // Umwandlung von Mentions (<@ID>) in lesbare Namen
+            let processedContent = m.content || "";
+            
+            // 1. Ersetze den Ticket-Besitzer (Owner)
+            processedContent = processedContent.replace(
+              new RegExp(`<@!?${selectedTicket.ownerId}>`, 'g'), 
+              `@${selectedTicket.userTag || 'User'}`
+            );
+
+            // 2. Ersetze den Bot selbst (falls vorhanden)
+            processedContent = processedContent.replace(
+              new RegExp(`<@!?${currentGuild?.botId || ''}>`, 'g'), 
+              `@Ticket Bot`
+            );
+
+            return (
+              <div key={i} className="group flex gap-4 hover:bg-muted/5 p-2 rounded-lg -mx-2 transition-colors">
+                <img 
+                  src={avatarUrl} 
+                  className="w-10 h-10 rounded-full shrink-0 border border-border/10 shadow-sm bg-background" 
+                  alt="" 
+                />
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="font-bold text-[15px] text-foreground">
+                      {m.author?.global_name || m.author?.username || "Discord User"}
+                    </span>
+                    <span className="text-[11px] text-muted-foreground opacity-70">
+                      {new Date(m.timestamp || m.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                    </span>
+                  </div>
+                  <div className="text-[15px] text-foreground/90 leading-relaxed break-words">
+                    <DiscordMarkdown text={processedContent} />
+                  </div>
+                </div>
+              </div>
+            );
+          })}
         </div>
       </div>
-    </div>
-  );
-})}
-                        {chatLoading && (
-                            <div className="text-center text-muted-foreground text-xs animate-pulse py-4">Lade Verlauf...</div>
-                        )}
-                      </div>
-                    </div>
-                  </>
-                )}
-              </Card>
+    </>
+  )}
+</Card>
             </div>
           )}
         </div>
