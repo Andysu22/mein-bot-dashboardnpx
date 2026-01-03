@@ -32,7 +32,9 @@ import {
   MoreHorizontal,
   Users,
   Shield,
-  AtSign
+  AtSign,
+  AlertTriangle,
+  Info
 } from "lucide-react";
 
 // --- CONFIG ---
@@ -164,7 +166,8 @@ function SortableOptionRow({
   setNodeRef,
   transform,
   transition,
-  isDragging
+  isDragging,
+  canDelete // Neu: Um das Löschen der letzten Option zu verhindern
 }) {
   const style = {
     transform: CSS.Transform.toString(transform),
@@ -234,8 +237,16 @@ function SortableOptionRow({
 
       <button
         type="button"
+        disabled={!canDelete}
         onClick={() => onDelete(option.id)}
-        className="mt-3 p-1.5 text-muted-foreground hover:text-red-500 hover:bg-red-500/10 rounded transition-all opacity-0 group-hover:opacity-100"
+        className={cn(
+          "mt-3 p-1.5 text-muted-foreground rounded transition-all",
+          canDelete 
+            ? "hover:text-red-500 hover:bg-red-500/10 opacity-0 group-hover:opacity-100" 
+            : "opacity-20"
+        )}
+        /* TOOLTIP HINWEIS */
+        title={!canDelete ? "Mindestens eine Option muss vorhanden bleiben." : "Option löschen"}
       >
         <Trash2 className="w-4 h-4" />
       </button>
@@ -274,13 +285,16 @@ function OptionListEditor({ options, onChange }) {
   };
 
   const handleChange = (newOpt) => onChange(options.map((o) => (o.id === newOpt.id ? newOpt : o)));
-  const handleDelete = (id) => onChange(options.filter((o) => o.id !== id));
+  const handleDelete = (id) => {
+    if (options.length <= 1) return; // Sicherheit: Letzte Option darf nicht weg
+    onChange(options.filter((o) => o.id !== id));
+  };
 
   const handleAdd = () => {
     if (options.length >= MAX_OPTIONS) return;
     onChange([
       ...options,
-      { id: nanoid(), label: "New Option", value: `option_${options.length + 1}`, description: "", emoji: "" }
+      { id: nanoid(), label: "Neue Option", value: `option_${options.length + 1}`, description: "", emoji: "" }
     ]);
   };
 
@@ -303,7 +317,17 @@ function OptionListEditor({ options, onChange }) {
       
       <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
         <SortableContext items={options.map((o) => o.id)} strategy={verticalListSortingStrategy}>
-          <div className="flex flex-col">{options.map((opt) => <SortableOptionItem key={opt.id} option={opt} onChange={handleChange} onDelete={handleDelete} />)}</div>
+          <div className="flex flex-col">
+            {options.map((opt) => (
+              <SortableOptionItem 
+                key={opt.id} 
+                option={opt} 
+                onChange={handleChange} 
+                onDelete={handleDelete}
+                canDelete={options.length > 1} 
+              />
+            ))}
+          </div>
         </SortableContext>
       </DndContext>
 
@@ -331,6 +355,8 @@ function SortableComponentRow({
     transform: CSS.Transform.toString(transform),
     transition,
   };
+
+  const isProtected = component.custom_id === "ticket_cat";
 
   const getIcon = (kind) => {
     switch (kind) {
@@ -361,7 +387,7 @@ function SortableComponentRow({
       ref={setNodeRef}
       style={style}
       className={cn(
-        "rounded-xl border overflow-hidden mb-4 bg-card",
+        "rounded-xl border overflow-hidden mb-4 bg-card transition-all",
         isDragging ? "opacity-50 border-primary shadow-xl ring-1 ring-primary" : "border-border hover:border-primary/20"
       )}
     >
@@ -401,24 +427,43 @@ function SortableComponentRow({
           >
             {component.collapsed ? <ChevronRight className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
           </button>
-          <button
-            type="button"
-            onClick={() => onDelete(component.id)}
-            className="p-2 text-muted-foreground hover:text-red-500 hover:bg-red-500/10 rounded-lg transition-colors ml-1"
-          >
-            <Trash2 className="w-5 h-5" />
-          </button>
+          
+          {!isProtected && (
+            <button
+              type="button"
+              onClick={() => onDelete(component.id)}
+              className="p-2 text-muted-foreground hover:text-red-500 hover:bg-red-500/10 rounded-lg transition-colors ml-1"
+            >
+              <Trash2 className="w-5 h-5" />
+            </button>
+          )}
         </div>
       </div>
 
       {/* Body */}
       {!component.collapsed && (
-        <div className="p-5 bg-card">
+        <div className="p-5 bg-card space-y-6">
+          
+          {/* GEKÜRZTE INFOBOX IN GELB/ORANGE NUR FÜR KATEGORIE */}
+          {isProtected && (
+            <div className="bg-amber-500/5 border border-amber-500/20 rounded-lg p-3 flex gap-3 items-start animate-in fade-in slide-in-from-top-1">
+              <div className="mt-0.5 bg-amber-500/10 p-1.5 rounded-md">
+                <AlertTriangle className="w-4 h-4 text-amber-500" />
+              </div>
+              <div className="space-y-0.5">
+                <p className="text-[11px] font-bold text-amber-600 uppercase tracking-wider">System-Feld</p>
+                <p className="text-[11px] text-muted-foreground leading-relaxed">
+                  Dieses Feld ist für die <b>Kategorien-Anzeige</b> im Dashboard nötig. Name und Optionen sind frei wählbar, die ID muss aber bleiben.
+                </p>
+              </div>
+            </div>
+          )}
+
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <div className="space-y-4">
               <div className="space-y-1.5">
                 <label className="text-[11px] uppercase font-bold text-muted-foreground pl-1 flex items-center gap-1.5">
-                  <Type className="w-3.5 h-3.5" /> Label
+                  <Type className="w-3.5 h-3.5" /> Label (Anzeigename)
                 </label>
                 <input
                   value={component.label}
@@ -426,18 +471,6 @@ function SortableComponentRow({
                   className="w-full bg-background border border-input rounded-lg px-3.5 py-2.5 text-sm text-foreground focus:border-primary outline-none placeholder:text-muted-foreground transition-all shadow-sm focus:ring-1 focus:ring-primary/20"
                   maxLength={45}
                   placeholder="Anzeigetext"
-                />
-              </div>
-              <div className="space-y-1.5">
-                <label className="text-[11px] uppercase font-bold text-muted-foreground pl-1 flex items-center gap-1.5">
-                  <MoreHorizontal className="w-3.5 h-3.5" /> Placeholder
-                </label>
-                <input
-                  value={component.placeholder || ""}
-                  onChange={(e) => onChange({ ...component, placeholder: e.target.value })}
-                  className="w-full bg-background border border-input rounded-lg px-3.5 py-2.5 text-sm text-foreground focus:border-primary outline-none placeholder:text-muted-foreground transition-all shadow-sm focus:ring-1 focus:ring-primary/20"
-                  maxLength={100}
-                  placeholder="Platzhaltertext..."
                 />
               </div>
               <div className="space-y-1.5">
@@ -457,27 +490,38 @@ function SortableComponentRow({
             <div className="space-y-4">
               <div className="space-y-1.5">
                 <label className="text-[11px] uppercase font-bold text-muted-foreground pl-1 flex items-center gap-1.5">
-                  <Hash className="w-3.5 h-3.5" /> Custom ID
+                  <Hash className="w-3.5 h-3.5" /> Custom ID (System-ID)
                 </label>
                 <input
                   value={component.custom_id}
+                  disabled={isProtected}
                   onChange={(e) => onChange({ ...component, custom_id: toSafeCustomId(e.target.value) })}
-                  className="w-full bg-background border border-input rounded-lg px-3.5 py-2.5 text-sm font-mono text-muted-foreground focus:border-primary outline-none transition-all shadow-sm focus:ring-1 focus:ring-primary/20"
+                  className={cn(
+                    "w-full bg-background border border-input rounded-lg px-3.5 py-2.5 text-sm font-mono text-muted-foreground focus:border-primary outline-none transition-all shadow-sm focus:ring-1 focus:ring-primary/20",
+                    isProtected && "bg-muted cursor-not-allowed opacity-70"
+                  )}
                   maxLength={100}
                 />
               </div>
 
               <div className="flex items-center justify-between pt-6 px-1">
                 <div
-                  onClick={() => onChange({ ...component, required: !component.required })}
-                  className="flex items-center gap-3 cursor-pointer group select-none"
+                  onClick={() => {
+                    if (isProtected) return;
+                    onChange({ ...component, required: !component.required })
+                  }}
+                  className={cn(
+                    "flex items-center gap-3 cursor-pointer group select-none",
+                    isProtected && "cursor-not-allowed"
+                  )}
                 >
                   <div
                     className={cn(
                       "w-5 h-5 rounded-[5px] border flex items-center justify-center transition-all shadow-sm",
                       component.required
                         ? "bg-primary border-primary"
-                        : "border-input bg-background group-hover:border-muted-foreground"
+                        : "border-input bg-background group-hover:border-muted-foreground",
+                      isProtected && "opacity-80"
                     )}
                   >
                     {component.required && <Check className="w-3.5 h-3.5 text-primary-foreground stroke-[3]" />}
@@ -486,35 +530,15 @@ function SortableComponentRow({
                     Pflichtfeld
                   </span>
                 </div>
-
-                {component.kind === KINDS.TEXT_INPUT && (
-                  <div className="flex bg-muted/20 p-1 rounded-lg border border-border">
-                    <button
-                      onClick={() => onChange({ ...component, style: 1 })}
-                      className={cn(
-                        "px-4 py-1.5 rounded-md text-[11px] font-bold uppercase transition-all",
-                        component.style === 1 ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
-                      )}
-                    >
-                      Kurz
-                    </button>
-                    <button
-                      onClick={() => onChange({ ...component, style: 2 })}
-                      className={cn(
-                        "px-4 py-1.5 rounded-md text-[11px] font-bold uppercase transition-all",
-                        component.style === 2 ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
-                      )}
-                    >
-                      Lang
-                    </button>
-                  </div>
-                )}
               </div>
             </div>
           </div>
 
           {component.kind === KINDS.STRING_SELECT && (
-            <OptionListEditor options={component.options || []} onChange={(newOpts) => onChange({ ...component, options: newOpts })} />
+            <OptionListEditor 
+              options={component.options || []} 
+              onChange={(newOpts) => onChange({ ...component, options: newOpts })} 
+            />
           )}
         </div>
       )}
@@ -562,11 +586,9 @@ export default function ModalBuilder({ data, onChange }) {
         };
 
         if (kind === KINDS.TEXT_INPUT) {
-          const styleRaw = c.style;
-          const style = styleRaw === 2 || styleRaw === "paragraph" ? 2 : 1;
           return {
             ...base,
-            style,
+            style: c.style === 2 || c.style === "paragraph" ? 2 : 1,
             min_length: Number.isFinite(c.min_length) ? c.min_length : 0,
             max_length: Number.isFinite(c.max_length) ? c.max_length : 1000
           };
@@ -588,11 +610,7 @@ export default function ModalBuilder({ data, onChange }) {
           };
         }
 
-        return {
-          ...base,
-          min_values: Number.isFinite(c.min_values) ? c.min_values : 1,
-          max_values: Number.isFinite(c.max_values) ? c.max_values : 1
-        };
+        return { ...base, min_values: 1, max_values: 1 };
       });
 
     return { ...safe, title: String(safe.title ?? "").slice(0, 45), components: normComps };
@@ -610,10 +628,11 @@ export default function ModalBuilder({ data, onChange }) {
   const onDragEnd = (event) => {
     const { active, over } = event;
     if (!over || active.id === over.id) return;
-    const oldIndex = (data.components || []).findIndex((c) => c.id === active.id);
-    const newIndex = (data.components || []).findIndex((c) => c.id === over.id);
+    const comps = data.components || [];
+    const oldIndex = comps.findIndex((c) => c.id === active.id);
+    const newIndex = comps.findIndex((c) => c.id === over.id);
     if (oldIndex !== -1 && newIndex !== -1) {
-      onChange({ ...data, components: arrayMove(data.components, oldIndex, newIndex) });
+      onChange({ ...data, components: arrayMove(comps, oldIndex, newIndex) });
     }
   };
 
@@ -622,8 +641,8 @@ export default function ModalBuilder({ data, onChange }) {
     onChange({ ...data, components: [...(data.components || []), defaultComponent(kind)] });
   };
 
-  const changeComp = (c) => onChange({ ...data, components: data.components.map((x) => (x.id === c.id ? c : x)) });
-  const delComp = (id) => onChange({ ...data, components: data.components.filter((x) => x.id !== id) });
+  const changeComp = (c) => onChange({ ...data, components: (data.components || []).map((x) => (x.id === c.id ? c : x)) });
+  const delComp = (id) => onChange({ ...data, components: (data.components || []).filter((x) => x.id !== id) });
 
   return (
     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-2 duration-500">
@@ -651,7 +670,7 @@ export default function ModalBuilder({ data, onChange }) {
                 {(data.components || []).length} / {MAX_COMPONENTS}
               </span>
             </div>
-            <p className="text-xs text-muted-foreground mt-1">Definiere die Fragen, die der User beantworten muss.</p>
+            <p className="text-xs text-muted-foreground mt-1">Definiere die Fragen für den Nutzer.</p>
           </div>
           <AddFieldMenu onAdd={addComp} disabled={(data.components || []).length >= MAX_COMPONENTS} />
         </div>

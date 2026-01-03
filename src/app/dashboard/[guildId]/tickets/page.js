@@ -824,49 +824,78 @@ export default function TicketsPage() {
 }
 
   async function handleSave() {
-    setSaving(true);
-    try {
-      if (editorTab === "config") {
-        const r = await fetch(`/api/settings/${guildId}`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(settings),
-        });
-        if (r.ok) flashFormMsg("Konfiguration gespeichert ✅");
-        else throw new Error();
-      } 
-      else if (editorTab === "panel") {
-         const r = await fetch(`/api/settings/${guildId}`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(settings),
-        });
-        if (r.ok) flashFormMsg("Panel Design gespeichert ✅");
-        else throw new Error();
+  setSaving(true);
+  try {
+    if (editorTab === "config" || editorTab === "panel") {
+      const r = await fetch(`/api/settings/${guildId}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(settings),
+      });
+      if (r.ok) flashFormMsg("Konfiguration gespeichert ✅");
+      else throw new Error();
+    } 
+    else if (editorTab === "modal" || editorTab === "response") {
+      
+      // 1. Check: Existiert das Kategorie-Feld (ticket_cat)?
+      const hasCategory = modal.components.find(c => c.custom_id === 'ticket_cat');
+      
+      if (!hasCategory) {
+        flashFormMsg("Achtung: Das Kategorie-Feld fehlt! Bitte Seite neu laden. ⚠️");
+        setSaving(false);
+        return;
       }
-      else if (editorTab === "modal" || editorTab === "response") {
-        const pl = {
-          mode: "custom",
-          version: 1,
-          botCode: buildTicketBotCode(modal),
-          builderData: { modal, response },
-        };
 
-        const r = await fetch(`/api/guilds/${guildId}/tickets/form`, {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(pl),
-        });
+      // 2. Check: Sind Dropdowns leer? (Verhindert Bot-Absturz)
+      const hasEmptySelect = modal.components.some(c => 
+        c.kind === 'string_select' && (!c.options || c.options.length === 0)
+      );
 
-        if (r.ok) flashFormMsg("Ticket System Update gespeichert ✅");
-        else throw new Error();
+      if (hasEmptySelect) {
+        flashFormMsg("Achtung: Ein Dropdown-Menü hat keine Optionen! ⚠️");
+        setSaving(false);
+        return;
       }
-    } catch {
-      flashFormMsg("Fehler beim Speichern ❌");
-    } finally {
-      setSaving(false);
+
+      // 3. Bereinigung: Wir erzwingen ID und Pflicht-Status für die Kategorie
+      // Das Label lassen wir so, wie der User es benannt hat.
+      const sanitizedComponents = modal.components.map(c => {
+        if (c.custom_id === 'ticket_cat') {
+          return { 
+            ...c, 
+            custom_id: 'ticket_cat', // ID fixieren
+            required: true,          // Pflichtfeld fixieren
+            kind: 'string_select'    // Dropdown fixieren
+          };
+        }
+        return c;
+      });
+
+      const safeModal = { ...modal, components: sanitizedComponents };
+
+      const pl = {
+        mode: "custom",
+        version: 1,
+        botCode: buildTicketBotCode(safeModal),
+        builderData: { modal: safeModal, response },
+      };
+
+      const r = await fetch(`/api/guilds/${guildId}/tickets/form`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(pl),
+      });
+
+      if (r.ok) flashFormMsg("Ticket System Update gespeichert ✅");
+      else throw new Error();
     }
+  } catch (err) {
+    console.error("Save Error:", err);
+    flashFormMsg("Fehler beim Speichern ❌");
+  } finally {
+    setSaving(false);
   }
+}
 
   async function handleReset() {
     if (!window.confirm("Bist du sicher? Dies setzt den aktuellen Bereich zurück.")) return;
@@ -1040,12 +1069,20 @@ export default function TicketsPage() {
 
             <div className="flex-1 min-w-0">
               <div className="flex justify-between items-start mb-0.5">
-                <span className={cn(
-                  "font-bold text-[14px] transition-colors leading-tight truncate",
-                  selectedTicketId === t._id ? "text-primary" : "text-foreground"
-                )}>
-                  {t.userTag || "Unbekannter User"}
-                </span>
+                <div className="flex items-center gap-2 truncate">
+                  <span className={cn(
+                    "font-bold text-[14px] transition-colors leading-tight truncate",
+                    selectedTicketId === t._id ? "text-primary" : "text-foreground"
+                  )}>
+                    {t.userTag || "Unbekannter User"}
+                  </span>
+                  {/* KATEGORIE BADGE LISTE */}
+                  {t.category && (
+                    <span className="text-[9px] bg-muted border border-border px-1.5 py-0.5 rounded text-muted-foreground uppercase font-bold tracking-wider shrink-0">
+                      {t.category}
+                    </span>
+                  )}
+                </div>
                 <span className="text-[10px] text-muted-foreground font-mono opacity-60">
                   {new Date(t.createdAt).toLocaleDateString([], { day: '2-digit', month: '2-digit' })}
                 </span>
@@ -1081,6 +1118,12 @@ export default function TicketsPage() {
             <span className="font-bold text-sm text-foreground truncate leading-tight">
               {selectedTicket.userTag || "Ticket Chat"}
             </span>
+            {/* KATEGORIE BADGE HEADER */}
+            {selectedTicket.category && (
+              <span className="text-[10px] bg-primary/10 text-primary border border-primary/20 px-2 py-0.5 rounded uppercase font-black tracking-widest leading-none">
+                {selectedTicket.category}
+              </span>
+            )}
           </div>
         </div>
         

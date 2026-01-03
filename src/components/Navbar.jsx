@@ -9,6 +9,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { openLoginPopup } from "@/lib/loginPopup";
+import Image from "next/image";
 
 // --- ÜBERSETZUNGEN ---
 const settingsI18n = {
@@ -73,9 +74,7 @@ export default function Navbar() {
   const [activeColor, setActiveColor] = useState("#5865F2"); 
   const [saving, setSaving] = useState(false);
 
-  // Texte basierend auf Sprache laden
   const t = settingsI18n[activeLang] || settingsI18n.de;
-
   const colors = ["#5865F2", "#EB459E", "#FEE75C", "#57F287", "#ED4245"];
 
   const updateGlobalStyle = (hsl) => {
@@ -115,7 +114,6 @@ export default function Navbar() {
                localStorage.setItem("theme", data.theme);
             }
           }
-          // Sprache aus DB laden
           if (data.ticketLanguage) {
               setActiveLang(data.ticketLanguage);
           }
@@ -184,10 +182,22 @@ export default function Navbar() {
         <div className="w-full px-6 h-full flex items-center justify-between">
           
           <Link href="/" className="flex items-center gap-3 group">
-            <div className="w-9 h-9 bg-gradient-to-br from-primary to-primary/80 rounded-xl flex items-center justify-center text-primary-foreground font-bold shadow-lg shadow-primary/20 group-hover:scale-105 transition-transform">
-              B
+            {/* ICON NOCH GRÖSSER & HOVER EFFEKT NUR AUF DAS ICON */}
+            <div className="relative w-18 h-18 flex items-center justify-center transition-all duration-300 group-hover:scale-110 group-hover:drop-shadow-[0_0_12px_rgba(var(--primary),0.6)]">
+              <Image 
+                src="/logo.svg" 
+                alt="Bot Logo" 
+                width={56} 
+                height={56} 
+                priority
+                className="w-full h-full object-contain"
+              />
             </div>
-            <span className="text-xl font-bold tracking-tight text-foreground/90">BotPanel</span>
+            
+            {/* NAME IST JETZT zeBOT UND KEIN FARB-HOVER MEHR */}
+            <span className="text-2xl font-black tracking-tighter text-foreground/90">
+             {/* ze<span className="text-primary">BOT</span> */}
+            </span>
           </Link>
 
           <div>
