@@ -26,7 +26,7 @@ function renderFieldContent(text) {
       }
 
       return (
-        <div key={index} className="discord-md__codeblock relative group pr-8">
+        <div key={index} className="discord-md__codeblock relative group pr-8 mt-1">
           {content}
           <div className="absolute top-2 right-2 p-1 rounded bg-[#1e1f22] text-[#b5bac1] opacity-0 group-hover:opacity-100 transition-opacity select-none pointer-events-none">
             <Copy className="w-3.5 h-3.5" />
@@ -51,9 +51,12 @@ export default function EmbedPreview({
   const data = embed || {};
   const color = toHexColor(data.color);
 
-  const name = botName || "Application Bot";
-  const avatar =
-    botIconUrl || "https://cdn.discordapp.com/embed/avatars/0.png";
+  const name = botName || "Ticketbot";
+  
+  const avatar = (botIconUrl && botIconUrl.includes("http") && !botIconUrl.includes("embed/avatars/0.png")) 
+    ? botIconUrl 
+    : "/logo.svg";
+
   const time = timestamp || new Date();
 
   const rightImage =
@@ -62,23 +65,25 @@ export default function EmbedPreview({
       : data.thumbnail_url;
 
   return (
-    <div className="w-full bg-[#313338] rounded-xl border border-[#2b2d31] p-4 font-sans text-left">
-      <div className="flex gap-3">
+    <div className="w-full p-4 font-['gg_sans',_sans-serif] text-left leading-[1.375rem]">
+      <div className="flex gap-4">
+        {/* Avatar ohne Hintergrund-Kreis */}
         <img
           src={avatar}
-          className="w-10 h-10 rounded-full bg-[#1e1f22] shrink-0"
+          className="w-10 h-10 rounded-full shrink-0 object-contain mt-[2px]"
           alt="Bot Avatar"
+          onError={(e) => { e.currentTarget.src = "/logo.svg"; }}
         />
 
         <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 mb-1 flex-wrap">
-            <span className="text-white font-medium hover:underline cursor-pointer">
+          <div className="flex items-center gap-2 mb-0.5 flex-wrap">
+            <span className="text-white text-[1rem] font-medium cursor-default">
               {name}
             </span>
-            <span className="bg-[#5865F2] text-white text-[10px] px-1.5 rounded">
+            <span className="bg-[#5865F2] text-white text-[0.625rem] px-1.25 py-[1px] rounded-[3px] font-semibold flex items-center h-[15px]">
               BOT
             </span>
-            <span className="text-xs text-[#949ba4]">
+            <span className="text-[0.75rem] text-[#949ba4] font-medium ml-0.5">
               Today at{" "}
               {time.toLocaleTimeString([], {
                 hour: "2-digit",
@@ -88,28 +93,28 @@ export default function EmbedPreview({
           </div>
 
           {content && (
-            <div className="text-[#dbdee1] text-sm mb-2 leading-relaxed">
+            <div className="text-[#dbdee1] text-[0.9375rem] mb-2 leading-relaxed">
               <DiscordMarkdown text={content} />
             </div>
           )}
 
-          <div className="flex max-w-full">
+          <div className="flex max-w-[520px]">
             <div
               className="w-[4px] rounded-l shrink-0"
               style={{ backgroundColor: color }}
             />
 
-            <div className="bg-[#2b2d31] rounded-r w-full p-3.5">
-              <div className="flex gap-3 items-start">
+            <div className="bg-[#2b2d31] rounded-r w-full p-3 pr-4">
+              <div className="flex gap-4 items-start">
                 <div className="flex-1 min-w-0">
                   {data.title && (
-                    <div className="text-white font-bold mb-1 break-words">
+                    <div className="text-white text-[1rem] font-bold mb-2 break-words leading-[1.375rem]">
                       {data.title}
                     </div>
                   )}
 
                   {data.description && (
-                    <div className="text-[#dbdee1] text-sm mb-2 break-words leading-relaxed">
+                    <div className="text-[#dbdee1] text-[0.875rem] break-words leading-[1.125rem]">
                       <DiscordMarkdown text={data.description} />
                     </div>
                   )}
@@ -118,7 +123,7 @@ export default function EmbedPreview({
                 {rightImage && (
                   <img
                     src={rightImage}
-                    className="w-[80px] h-[80px] rounded object-cover shrink-0"
+                    className="w-[80px] h-[80px] rounded object-cover shrink-0 ml-2"
                     alt=""
                     onError={(e) => (e.currentTarget.style.display = "none")}
                   />
@@ -126,7 +131,7 @@ export default function EmbedPreview({
               </div>
 
               {Array.isArray(data.fields) && data.fields.length > 0 && (
-                <div className="flex flex-wrap gap-4 mt-2">
+                <div className="flex flex-wrap gap-x-4 gap-y-2 mt-2">
                   {data.fields.map((field) => (
                     <div
                       key={field.id}
@@ -134,16 +139,11 @@ export default function EmbedPreview({
                         field.inline ? "w-[calc(33.333%-1rem)]" : "w-full"
                       )}
                     >
-                      <div className="text-white font-bold text-sm mb-1">
+                      <div className="text-white text-[0.875rem] font-bold mb-0.5">
                         <DiscordMarkdown text={field.name} />
                       </div>
                       
-                      <div
-                        className={cn(
-                          "embed-field-value text-sm text-[#dbdee1]",
-                          !field.inline && "embed-field-value--large"
-                        )}
-                      >
+                      <div className="text-[0.875rem] text-[#dbdee1] leading-[1.125rem]">
                         {renderFieldContent(field.value)}
                       </div>
                     </div>
@@ -152,7 +152,7 @@ export default function EmbedPreview({
               )}
 
               {data.image_url && (
-                <div className="mt-3">
+                <div className="mt-4">
                   <img
                     src={data.image_url}
                     className="rounded max-w-full max-h-[300px] object-cover w-full"
@@ -165,7 +165,7 @@ export default function EmbedPreview({
               {(data.footer?.text ||
                 data.footer?.icon_url ||
                 data.timestamp) && (
-                <div className="pt-2 mt-2 flex items-center gap-2 text-xs text-[#949ba4]">
+                <div className="mt-2 flex items-center gap-2 text-[0.75rem] text-[#949ba4] font-medium">
                   {data.footer?.icon_url && (
                     <img
                       src={data.footer.icon_url}
@@ -173,7 +173,7 @@ export default function EmbedPreview({
                       alt=""
                     />
                   )}
-                  <span className="flex items-center gap-1 flex-wrap">
+                  <span className="flex items-center gap-1 flex-wrap leading-[1rem]">
                     {data.footer?.text && <span>{data.footer.text}</span>}
                     {data.footer?.text && data.timestamp && <span>•</span>}
                     {data.timestamp && (
@@ -190,7 +190,7 @@ export default function EmbedPreview({
               )}
             </div>
           </div>
-          {children && <div className="mt-3">{children}</div>}
+          {children && <div className="mt-2">{children}</div>}
         </div>
       </div>
     </div>
