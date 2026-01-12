@@ -5,6 +5,8 @@ const nextConfig = {
     buildActivity: false,
     staticPageGeneration: false,
   },
+  
+  // Sicherheits-Header
   async headers() {
     return [
       {
@@ -14,6 +16,23 @@ const nextConfig = {
           { key: 'X-Content-Type-Options', value: 'nosniff' },
           { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
         ],
+      },
+    ];
+  },
+
+  // NEU: Erzwingt Weiterleitung auf www.convee.de
+  async redirects() {
+    return [
+      {
+        source: '/:path*',
+        has: [
+          {
+            type: 'host',
+            value: 'convee.de',
+          },
+        ],
+        destination: 'https://www.convee.de/:path*',
+        permanent: true,
       },
     ];
   },
